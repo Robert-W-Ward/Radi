@@ -22,9 +22,10 @@ add_executable (Radi "src/Radi.cpp" "include/Radi.h")
 
 # Add pacakges
 find_package(glfw3 REQUIRED) 
+find_package(glad REQUIRED)
 # Link
 target_link_libraries(Radi PRIVATE glfw)
-
+target_link_libraries(Radi PRIVATE glad::glad)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET Radi PROPERTY CXX_STANDARD 20)
