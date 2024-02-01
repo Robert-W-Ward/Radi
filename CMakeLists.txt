@@ -20,7 +20,7 @@ project ("Radi")
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
 # Add source to this project's executable.
-add_executable (Radi "src/Radi.cpp" "include/Radi.h" "src/Scene.cpp" "src/Object.cpp")
+add_executable (Radi "src/Radi.cpp" "src/Scene.cpp" "src/Object.cpp" "src/Transform.cpp")
 
 # Add pacakges
 find_package(glfw3 REQUIRED) 

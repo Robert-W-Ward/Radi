@@ -26,7 +26,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
 
-    // Create a windowed mode window and its OpenGL context
+    // Create a windowed mode window and its OpenGL context 
     GLFWwindow* window = glfwCreateWindow(WINDOW_X, WINDOW_Y, "Hello GLFW", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
