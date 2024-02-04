@@ -1,6 +1,6 @@
 #include <cstring>
 #include "Shader.hpp"
-
+#include <glm/glm.hpp>
 Radi::Types::Shader::Shader(const char* vertexPath, const char* fragmentPath) {
 	std::string vertexCode;
 	std::string fragmentCode;
@@ -94,4 +94,10 @@ void Radi::Types::Shader::setInt(const std::string& name, int value)const {
 
 void Radi::Types::Shader::setFloat(const std::string& name, float value)const {
     glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
+}
+void Radi::Types::Shader::setVec3(const std::string& name, const glm::vec3& value) const {
+    glUniform3f(glGetUniformLocation(ID, name.c_str()), value.x,value.y,value.z);
+}
+void Radi::Types::Shader::setVec2(const std::string& name, const glm::vec2& value)const{
+    glUniform2f(glGetUniformLocation(ID,name.c_str()),value.x,value.y);
 }
