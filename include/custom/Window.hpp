@@ -15,11 +15,11 @@ namespace Radi::Types{
 
         // Callback setters
         void SetFramebufferSizeCallback(GLFWframebuffersizefun callback);
-
+        void SetMouseCursorPosCallback(GLFWcursorposfun callback);
 
         void SetCamera(Camera* camera);
         // Input handling
-        void ProcessInput(float deltaTime);
+        void ProcessInput(float deltaTime );
 
     private:
         GLFWwindow* window;
@@ -27,12 +27,16 @@ namespace Radi::Types{
         int height;
         const char* title;
         Camera* camera;
+        double lastX,lastY;
+        bool firstMouse;
         // Prevent copying
         Window(const Window&) = delete;
         Window& operator=(const Window&) = delete;
 
         static void FramebufferSizeCallback(GLFWwindow* window, int width, int height);
+        static void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
         void ProcessCameraMovement(float deltaTime);
+        void ProcessMouseMovement(double xpos,double ypos);
     };
 }
 

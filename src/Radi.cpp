@@ -7,6 +7,7 @@
 #include "Shader.hpp"
 #include "Camera.hpp"
 #include "Window.hpp"
+#include "nlohmann/json.hpp"
 const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
 const int VIEWPORT_X = 800;
 const int VIEWPORT_Y = 600;
@@ -32,6 +33,8 @@ int main() {
     Radi::Types::Shader shader((PROJECT_ROOT + "\\shader.vert").c_str(),(PROJECT_ROOT + "\\shader.frag").c_str());
     Radi::Types::Object cube;
     window.SetCamera(&camera);
+
+
     std::vector<glm::vec3> vertices = {
         // Front face
         glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.5f, -0.5f,  0.5f), glm::vec3(0.5f,  0.5f,  0.5f),
