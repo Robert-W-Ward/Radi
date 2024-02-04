@@ -1,36 +1,21 @@
-﻿# CMakeList.txt : CMake project for Radi, include source and define
-# project specific logic here.
-#
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required(VERSION 3.15)
 
-# Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-endif()
+project(Radi)
 
+# Set the CMAKE_RUNTIME_OUTPUT_DIRECTORY
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-if (POLICY CMP0091)
-  cmake_policy(SET CMP0091 NEW)
-endif()
-include (${CMAKE_BINARY_DIR}/conan_toolchain.cmake)
+include_directories(include/custom) # This will make cmake look for headers in the entire /include directory
+include_directories(include/)
+# include_directories(include/glfw) # For example, if you have GLFW headers locally
 
-# Set the output directory for binaries
-project ("Radi")
+# Add the source files
+add_executable(${PROJECT_NAME} "src/Radi.cpp" "src/glad.c" "src/Object.cpp" "src/Scene.cpp" "src/Shader.cpp" "src/Transform.cpp")
 
-include_directories("${PROJECT_SOURCE_DIR}/include")
-# Add source to this project's executable.
-add_executable (Radi "src/Radi.cpp" "src/Scene.cpp" "src/Object.cpp" "src/Transform.cpp")
+# Find the GLFW package (if using the system-installed GLFW)
+find_package(GLFW3 REQUIRED)
 
-# Add pacakges
-find_package(glfw3 REQUIRED) 
-find_package(glad REQUIRED)
-# Link
-target_link_libraries(Radi PRIVATE glfw)
-target_link_libraries(Radi PRIVATE glad::glad)
+# Link against GLFW and any other required libraries
+target_link_libraries(${PROJECT_NAME} glfw)
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET Radi PROPERTY CXX_STANDARD 20)
-endif()
-
-# TODO: Add tests and install targets if needed.
+# target_link_libraries(${PROJECT_NAME} glfw OpenGL::GL)

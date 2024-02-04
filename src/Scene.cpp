@@ -1,4 +1,4 @@
-#include "Scene.h"
+#include "Scene.hpp"
 Radi::Types::Scene::Scene(std::vector<Object> objects) {
 	_objects = objects;
 }

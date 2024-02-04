@@ -3,7 +3,7 @@
 #endif // !SCENE_H
 
 
-#include "Object.h"
+#include "Object.hpp"
 
 
 namespace Radi::Types{
