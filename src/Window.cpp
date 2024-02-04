@@ -54,13 +54,35 @@ namespace Radi::Types{
         glfwSetFramebufferSizeCallback(window, callback);
     }
 
-    void Window::ProcessInput() {
+    void Window::ProcessInput(float deltaTime) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
+
+        ProcessCameraMovement(deltaTime);
     }
 
     void Window::FramebufferSizeCallback(GLFWwindow* window, int width, int height) {
         glViewport(0, 0, width, height);
     }
+    
+    void Window::ProcessCameraMovement(float deltaTime) {
+        if (!camera) return; // Ensure there's a camera
 
+        // Example movement processing
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+            camera->ProcessKeyboard(GLFW_KEY_W, deltaTime);
+        if (glfwGetKey(window,GLFW_KEY_A) == GLFW_PRESS)
+            camera->ProcessKeyboard(GLFW_KEY_A, deltaTime);
+        if (glfwGetKey(window,GLFW_KEY_S) == GLFW_PRESS)
+            camera->ProcessKeyboard(GLFW_KEY_S, deltaTime);
+        if (glfwGetKey(window,GLFW_KEY_D) == GLFW_PRESS)
+            camera->ProcessKeyboard(GLFW_KEY_D, deltaTime);
+        if (glfwGetKey(window,GLFW_KEY_SPACE) == GLFW_PRESS)
+            camera->ProcessKeyboard(GLFW_KEY_SPACE,deltaTime);
+        if (glfwGetKey(window,GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+            camera->ProcessKeyboard(GLFW_KEY_LEFT_SHIFT,deltaTime);
+    }
+    void Window::SetCamera(Radi::Types::Camera* camera){
+        this->camera = camera;
+    }
 }

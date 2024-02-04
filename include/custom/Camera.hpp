@@ -1,21 +1,32 @@
+// Camera.hpp
+#pragma once
+#include "GLFW/glfw3.h"
 #include <glm/glm.hpp>
-namespace Radi::Types
-{
-    struct Camera
-    {
-        glm::vec3 Position;
-        glm::vec3 UpDir;
-        glm::vec3 FrontDirection;
-        glm::vec3 RightDir;
-        float Fov;
-        float RotationSpeed;
-        float Yaw;
-        float Pitch;
-        float Sensitivity;
-        glm::vec3 WorldUp;
-        Camera();
-        Camera(glm::vec3 pos, glm::vec3 upDir,glm::vec3 frontDir,glm::vec3 rightDir, float fov, float rotSpeed,float yaw,float pitch,float sens);
-        void UpdateCameraDirection();
-        ~Camera();
-    };    
-} 
+#include <glm/gtc/matrix_transform.hpp>
+
+namespace Radi::Types {
+    class Camera {
+        public:
+            glm::vec3 Position;
+            glm::vec3 Front;
+            glm::vec3 Up;
+            glm::vec3 Right;
+            glm::vec3 WorldUp;
+
+            float Yaw;
+            float Pitch;
+            float MovementSpeed;
+            float MouseSensitivity;
+            float Zoom;
+            Camera();
+
+            glm::mat4 GetViewMatrix() const;
+            glm::mat4 GetProjectionMatrix(float width, float height) const;
+
+            void ProcessKeyboard(int direction, float deltaTime);
+            void ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch);
+            void UpdateCameraVectors();
+    };
+
+}
+

@@ -1,6 +1,7 @@
 #include <cstring>
 #include "Shader.hpp"
 #include <glm/glm.hpp>
+#include "glm/gtc/type_ptr.hpp"
 Radi::Types::Shader::Shader(const char* vertexPath, const char* fragmentPath) {
 	std::string vertexCode;
 	std::string fragmentCode;
@@ -100,4 +101,8 @@ void Radi::Types::Shader::setVec3(const std::string& name, const glm::vec3& valu
 }
 void Radi::Types::Shader::setVec2(const std::string& name, const glm::vec2& value)const{
     glUniform2f(glGetUniformLocation(ID,name.c_str()),value.x,value.y);
+}
+void Radi::Types::Shader::setMat4(const std::string& name, const glm::mat4& value)const{
+    glUniformMatrix4fv(glGetUniformLocation(ID,name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
+
 }

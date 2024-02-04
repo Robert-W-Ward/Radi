@@ -15,9 +15,6 @@ const int WINDOW_Y = 600;
 
 void setupFullscreenQuad(unsigned int &VAO, unsigned int &VBO);
 
-
-
-
 int main() {
     // Specify window dimensions and title
     const int windowWidth = 800;
@@ -31,17 +28,70 @@ int main() {
         std::cerr << "Failed to initialize the window and OpenGL context" << std::endl;
         return -1;
     }
+    Radi::Types::Camera camera;
+    Radi::Types::Shader shader((PROJECT_ROOT + "\\shader.vert").c_str(),(PROJECT_ROOT + "\\shader.frag").c_str());
+    Radi::Types::Object cube;
+    window.SetCamera(&camera);
+    std::vector<glm::vec3> vertices = {
+        // Front face
+        glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.5f, -0.5f,  0.5f), glm::vec3(0.5f,  0.5f,  0.5f),
+        glm::vec3(0.5f,  0.5f,  0.5f), glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(-0.5f, -0.5f,  0.5f),
+        // Back face
+        glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(0.5f,  0.5f, -0.5f),
+        glm::vec3(0.5f,  0.5f, -0.5f), glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(-0.5f, -0.5f, -0.5f),
+        // Top face
+        glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(0.5f,  0.5f,  0.5f),
+        glm::vec3(0.5f,  0.5f,  0.5f), glm::vec3(0.5f,  0.5f, -0.5f), glm::vec3(-0.5f,  0.5f, -0.5f),
+        // Bottom face
+        glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(0.5f, -0.5f,  0.5f),
+        glm::vec3(0.5f, -0.5f,  0.5f), glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(-0.5f, -0.5f, -0.5f),
+        // Right face
+        glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(0.5f,  0.5f, -0.5f), glm::vec3(0.5f,  0.5f,  0.5f),
+        glm::vec3(0.5f,  0.5f,  0.5f), glm::vec3(0.5f, -0.5f,  0.5f), glm::vec3(0.5f, -0.5f, -0.5f),
+        // Left face
+        glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(-0.5f,  0.5f,  0.5f),
+        glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(-0.5f, -0.5f, -0.5f)
+    };
+     
+    cube.Initialize(vertices);
 
+
+    Radi::Types::Scene scene;
+
+    // Setup fullscreen quad
+    unsigned int VAO, VBO;
+    setupFullscreenQuad(VAO, VBO);
+
+    float lastFrame = 0.0f;
+    float deltaTime = 0.0f;
     // Main loop
     while (!window.ShouldClose()) {
+
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
         // Input handling
-        window.ProcessInput();
+        window.ProcessInput(deltaTime);
+
+
 
         // Render commands...
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+        glm::mat4 projection = camera.GetProjectionMatrix(windowWidth, windowHeight);
+        glm::mat4 view = camera.GetViewMatrix();
+
+        shader.use();
+        shader.setMat4("projection",projection);
+        shader.setMat4("view",view);
+
         // Here you would add your rendering logic
+        cube.Render();
+
+
 
         // Swap buffers and poll IO events
         window.SwapBuffers();

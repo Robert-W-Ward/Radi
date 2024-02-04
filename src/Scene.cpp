@@ -1,5 +1,5 @@
 #include "Scene.hpp"
-Radi::Types::Scene::Scene(std::vector<Object> objects) {
+Radi::Types::Scene::Scene(std::vector<Object*> objects) {
 	_objects = objects;
 }
 

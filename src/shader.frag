@@ -29,7 +29,8 @@ float rayMarch(vec3 rayOrigin, vec3 rayDir, vec3 center, float radius) {
 void main() {
 
 
-
+    FragColor = vec4(1.0,1.0,0.0,1.0);
+    return;
     vec2 ndc = (gl_FragCoord.xy / screenSize) * 2.0 - 1.0;
     ndc.x *= aspectRatio;
 

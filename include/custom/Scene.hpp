@@ -11,9 +11,9 @@ namespace Radi::Types{
 	{
 		public:
 			Scene();
-			Scene(std::vector<Object> objs);
+			Scene(std::vector<Object*> objs);
 			~Scene();
-			std::vector<Object> _objects;
+			std::vector<Object*> _objects;
 		private:
 
 	};
