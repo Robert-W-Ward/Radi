@@ -20,7 +20,7 @@ include_directories(include/)
 # include_directories(include/glfw) # For example, if you have GLFW headers locally
 
 # Add the source files
-add_executable(${PROJECT_NAME} "src/Radi.cpp" "src/glad.c" "src/Object.cpp" "src/Scene.cpp" "src/Shader.cpp" "src/Transform.cpp" "src/Camera.cpp")
+add_executable(${PROJECT_NAME} "src/Radi.cpp" "src/glad.c" "src/Object.cpp" "src/Scene.cpp" "src/Shader.cpp" "src/Transform.cpp" "src/Camera.cpp" "src/Window.cpp")
 
 # Find the GLFW package (if using the system-installed GLFW)
 find_package(GLFW3 REQUIRED)
