@@ -1,8 +1,8 @@
-#ifndef SCENE_H
-#define SCENE_H
-#endif // !SCENE_H
-
-
+#pragma once
+#include <fstream>
+#include <iostream>
+#include <string>
+#include "Shader.hpp"
 #include "Object.hpp"
 
 
@@ -11,10 +11,12 @@ namespace Radi::Types{
 	{
 		public:
 			Scene();
-			Scene(std::vector<Object*> objs);
+			Scene(std::vector<Object*>& objs);
 			~Scene();
-			std::vector<Object*> _objects;
+			void LoadSceneFromJson(const std::string& path);
+			void Render(Radi::Types::Shader* shader);
 		private:
+			std::vector<Object*>* objects;
 
 	};
 }

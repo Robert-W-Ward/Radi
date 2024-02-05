@@ -14,14 +14,14 @@ namespace Radi::Types {
 			Object(const Object&) = delete;
 			Object& operator=(const Object&) = delete;
 
-			void Initialize(const std::vector<glm::vec3>& vertices);
+			void Initialize(const std::vector<glm::vec3>& vertices,const std::vector<glm::vec3>& colors);
 			void Render() const;
 
 		private:
-			unsigned int VAO, VBO;
+			unsigned int VAO, VBO,CBO;
 			size_t vertexCount; // Keep track of the number of vertices
 
-			void setupMesh(const std::vector<glm::vec3>& vertices);
+			void setupMesh(const std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& color);
 		};
 
 } 

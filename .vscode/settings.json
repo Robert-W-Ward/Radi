@@ -56,6 +56,12 @@
         "ratio": "cpp",
         "format": "cpp",
         "iomanip": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "any": "cpp",
+        "codecvt": "cpp",
+        "forward_list": "cpp",
+        "map": "cpp",
+        "ranges": "cpp",
+        "valarray": "cpp"
     }
 }

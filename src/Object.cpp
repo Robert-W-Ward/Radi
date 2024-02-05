@@ -9,9 +9,9 @@ namespace Radi::Types {
 		glDeleteBuffers(1, &VBO);
 	}
 
-	void Object::Initialize(const std::vector<glm::vec3>& vertices) {
+	void Object::Initialize(const std::vector<glm::vec3>& vertices,const std::vector<glm::vec3>& colors) {
 		vertexCount = vertices.size(); // Update the vertex count
-		setupMesh(vertices);
+		setupMesh(vertices,colors);
 	}
 
 	void Object::Render() const {
@@ -20,23 +20,29 @@ namespace Radi::Types {
 		glBindVertexArray(0);
 	}
 
-	void Object::setupMesh(const std::vector<glm::vec3>& vertices) {
+	void Object::setupMesh(const std::vector<glm::vec3>& vertices,const std::vector<glm::vec3>& colors) {
 		glGenVertexArrays(1, &VAO);
-		glGenBuffers(1, &VBO);
-
 		glBindVertexArray(VAO);
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+		glGenBuffers(1, &VBO);
+		glBindBuffer(GL_ARRAY_BUFFER,VBO);
 		// Since glm::vec3 is essentially an array of three floats, we can directly use &vertices[0] to access its data
 		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-
 		// Position attribute
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
 		glEnableVertexAttribArray(0);
+
+		glGenBuffers(1,&CBO);
+		glBindBuffer(GL_ARRAY_BUFFER,CBO);
+		glBufferData(GL_ARRAY_BUFFER,colors.size()*sizeof(glm::vec3),&colors[0],GL_STATIC_DRAW);
+		// Color attribute
+    	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+		glEnableVertexAttribArray(1);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 	}
 
 
-} // namespace Graphics
+}
 
