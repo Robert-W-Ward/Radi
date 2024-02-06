@@ -13,7 +13,7 @@ const int VIEWPORT_X = 800;
 const int VIEWPORT_Y = 600;
 const int WINDOW_X = 800;
 const int WINDOW_Y = 600;
-
+const int aspectRatio = static_cast<float>(WINDOW_X)/ static_cast<float>(WINDOW_Y);
 void setupFullscreenQuad(unsigned int &VAO, unsigned int &VBO);
 nlohmann::json loadScene(const std::string& path);
 
@@ -34,14 +34,15 @@ int main() {
         return -1;
     }
     Radi::Types::Camera camera;
-    Radi::Types::Shader shader((PROJECT_ROOT + "\\shader.vert").c_str(),(PROJECT_ROOT + "\\shader.frag").c_str());
+    Radi::Types::Shader shader((PROJECT_ROOT + "\\raytrace.vert").c_str(),(PROJECT_ROOT + "\\raytrace.frag").c_str());
     window.SetCamera(&camera);
 
     std::string scenePath = PROJECT_ROOT + "\\RasterScene.json";
 
     Radi::Types::Scene* scene = new Radi::Types::Scene();
     scene->LoadSceneFromJson(scenePath);
-
+    unsigned int VAO, VBO;
+    setupFullscreenQuad(VAO,VBO);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     float lastFrame = 0.0f;
@@ -60,16 +61,28 @@ int main() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
+        //For a regularly rasterized scene
+        // glm::mat4 projection = camera.GetProjectionMatrix(windowWidth, windowHeight);
+        // glm::mat4 view = camera.GetViewMatrix();
 
-        glm::mat4 projection = camera.GetProjectionMatrix(windowWidth, windowHeight);
-        glm::mat4 view = camera.GetViewMatrix();
+        // shader.use();
+        // shader.setMat4("projection",projection);
+        // shader.setMat4("view",view);
 
+        // scene->Render(&shader);
         shader.use();
-        shader.setMat4("projection",projection);
-        shader.setMat4("view",view);
+        shader.setVec3("camPos",camera.Position);
+        shader.setVec3("camDir",camera.Front);
+        shader.setVec3("camUp",camera.Up);
+        shader.setVec3("camRight",camera.Right);
+        shader.setFloat("camFOV",camera.Zoom);
+        shader.setFloat("aspectRatio",aspectRatio);
+        shader.setFloat("VP_X",VIEWPORT_X);
+        shader.setFloat("VP_Y",VIEWPORT_Y);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLES,0,6);
 
-        scene->Render(&shader);
-
+        glBindVertexArray(0);
         // Swap buffers and poll IO events
         window.SwapBuffers();
         window.PollEvents();
