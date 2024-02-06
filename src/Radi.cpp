@@ -42,7 +42,8 @@ int main() {
     Radi::Types::Scene* scene = new Radi::Types::Scene();
     scene->LoadSceneFromJson(scenePath);
 
-
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
     float lastFrame = 0.0f;
     float deltaTime = 0.0f;
     // Main loop
@@ -57,7 +58,7 @@ int main() {
 
         // Render commands...
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 
         glm::mat4 projection = camera.GetProjectionMatrix(windowWidth, windowHeight);
