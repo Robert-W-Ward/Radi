@@ -8,6 +8,11 @@
 #include "Camera.hpp"
 #include "Window.hpp"
 #include "nlohmann/json.hpp"
+
+#define SPHERE 0
+#define BOX 1
+#define PYRAMID 2
+
 const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
 const int VIEWPORT_X = 800;
 const int VIEWPORT_Y = 600;
@@ -16,6 +21,20 @@ const int WINDOW_Y = 600;
 const int aspectRatio = static_cast<float>(WINDOW_X)/ static_cast<float>(WINDOW_Y);
 void setupFullscreenQuad(unsigned int &VAO, unsigned int &VBO);
 nlohmann::json loadScene(const std::string& path);
+
+struct alignas(16) Material{
+    alignas(16) glm::vec4 color;
+    float specular;
+    float shininess;
+};
+
+struct Shape{
+    int type ;//0:sphere, 1:box/plane, 2:pyramid
+    alignas(16) glm::vec4 position;
+    alignas(16) glm::vec4 dimensions;
+    Material material;
+
+};
 
 
 int main() {
@@ -41,12 +60,44 @@ int main() {
 
     Radi::Types::Scene* scene = new Radi::Types::Scene();
     scene->LoadSceneFromJson(scenePath);
+
+
     unsigned int VAO, VBO;
     setupFullscreenQuad(VAO,VBO);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
+
+    std::vector<Shape> shapes = {
+        {
+            SPHERE,
+            glm::vec4(0.0,0.0,-5.0,0.0),
+            glm::vec4(1.0,0.0,0.0,0.0),
+            {glm::vec4(1.0,1.0,0.0,1.0),0.5,32.0 }
+        },
+        {
+            SPHERE,
+            glm::vec4(0.0,0.0,0.0,0.0),
+            glm::vec4(1.0,0.0,0.0,0.0),
+            {glm::vec4(1.0,0.0,0.0,1.0),0.5,32.0}
+        }
+        // {
+        //     BOX,
+        //     glm::vec3(0.0,0.0,0.0),
+        //     glm::vec3(5.0,1.0,5.0),
+        //     {glm::vec3(0.0,1.0,0.0),0.5,32.0}
+        // }
+    };
+
     float lastFrame = 0.0f;
     float deltaTime = 0.0f;
+
+
+    GLuint ssbo;
+    glGenBuffers(1,&ssbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER,ssbo);
+    glBufferData(GL_SHADER_STORAGE_BUFFER,sizeof(Shape)*shapes.size(),&shapes.at(0),GL_STATIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,ssbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER,0);
     // Main loop
     while (!window.ShouldClose()) {
 
@@ -61,15 +112,6 @@ int main() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-        //For a regularly rasterized scene
-        // glm::mat4 projection = camera.GetProjectionMatrix(windowWidth, windowHeight);
-        // glm::mat4 view = camera.GetViewMatrix();
-
-        // shader.use();
-        // shader.setMat4("projection",projection);
-        // shader.setMat4("view",view);
-
-        // scene->Render(&shader);
         shader.use();
         shader.setVec3("camPos",camera.Position);
         shader.setVec3("camDir",camera.Front);
@@ -81,8 +123,9 @@ int main() {
         shader.setFloat("VP_Y",VIEWPORT_Y);
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES,0,6);
-
         glBindVertexArray(0);
+
+
         // Swap buffers and poll IO events
         window.SwapBuffers();
         window.PollEvents();

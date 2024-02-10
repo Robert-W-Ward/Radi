@@ -104,5 +104,17 @@ void Radi::Types::Shader::setVec2(const std::string& name, const glm::vec2& valu
 }
 void Radi::Types::Shader::setMat4(const std::string& name, const glm::mat4& value)const{
     glUniformMatrix4fv(glGetUniformLocation(ID,name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
+}
+void Radi::Types::Shader::setUniformBlockBinding(const std::string& blockName, GLuint bindingPoint) const {
+    // Retrieve the index of the uniform block named 'blockName' in the shader program
+    GLuint blockIndex = glGetUniformBlockIndex(ID, blockName.c_str());
 
+    // Check if the block index is valid
+    if (blockIndex == GL_INVALID_INDEX) {
+        std::cerr << "Uniform block \"" << blockName << "\" not found in shader program.\n";
+        return;
+    }
+
+    // Bind the uniform block to the specified uniform buffer binding point
+    glUniformBlockBinding(ID, blockIndex, bindingPoint);
 }
