@@ -41,11 +41,11 @@ vec3 lightPos = vec3(2.0,5.0,0.0);
 
 
 
-float sphereSDF(vec4 rayPos, vec4 sphereCenter, float sphereRadius) {
+float sphereSDF(vec3 rayPos, vec3 sphereCenter, float sphereRadius) {
     return length(rayPos - sphereCenter) - sphereRadius;
 }
-float boxSDF(vec3 pos, vec3 b){
-    vec3 q = abs(pos) - b;
+float boxSDF(vec3 collisonPoint, vec3 b,vec3 boxPos){
+    vec3 q = abs(collisonPoint - boxPos) - b;
     return length(max(q,0.0))+ min(max(q.x,max(q.y,q.z)),0.0);
 }
 
@@ -61,9 +61,9 @@ float getSceneSDF(vec3 point, out Material material) {
     for (int i = 0; i < shapes.length(); ++i) {
         float dist = 1e9; // Initialize with a high value
         if (shapes[i].type == 0) {
-            dist = sphereSDF(vec4(point,0.0),shapes[i].position,5.0);
+            dist = sphereSDF(point,shapes[i].position.xyz,shapes[i].dimensions.x);
         } else if (shapes[i].type == BOX) {
-            //dist = boxSDF(shapes[i].position,shapes[i].dimensions);
+            dist = boxSDF(point,shapes[i].dimensions.xyz,shapes[i].position.xyz);
         }
         // Add more shape types here as needed
 
@@ -74,12 +74,6 @@ float getSceneSDF(vec3 point, out Material material) {
     }
 
     return closestDist;
-}
-
-
-float getDist(vec3 point){
-    float SphereDist = sphereSDF(vec4(point,0.0), vec4(0.0), 1.0); 
-    return SphereDist;
 }
 
 vec3 getNormal(vec3 p) {
@@ -110,6 +104,7 @@ vec4 calcMaterialLighting(vec3 point, Material mat){
     vec3 reflectDir = reflect(-lightDir,normal);
     float spec = pow(max(dot(viewDir,reflectDir),0.0),mat.shininess) * mat.specular;
 
+    //diffuse
     vec4 diffuseColor = mat.color * diff;
     vec4 specularColor = vec4(1.0) * spec; 
     return diffuseColor + specularColor;
