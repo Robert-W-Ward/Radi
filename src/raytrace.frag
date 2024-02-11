@@ -9,7 +9,7 @@ const int MAX_SHAPES = 50;
 
 
 out vec4 FragColor;
-const int MAX_REFLECTION_DEPTH =3;
+const int MAX_REFLECTION_DEPTH = 3;
 struct Material{
     vec4 color;
     float specular;
@@ -173,43 +173,47 @@ float rayMarch(vec3 rayOrigin, vec3 rayDir, float start, float end, out Material
 }
 
 void main() {
-
     //Normalize UV
-    vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X,VP_Y)) * 2.0 - 1.0;
-    Material material;
-    
-    //Get ray dir from the camera orientation
-    vec3 rayDir = getRayDir(screenCoords);
+    vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
     vec3 rayOrigin = camPos;
+    vec3 rayDir = getRayDir(screenCoords);
+    vec4 accumulatedColor = vec4(0.0); // Initialize accumulated color
+    vec4 reflectionAttenuation = vec4(1.0); // Initial reflection contribution is full
+    int depth;
 
-    
-    //Perform ray marching
-    float minDist = 0.0;
-    float maxDist = 100.0;
-    vec3 hitNormal;
-    float hitDist = rayMarch(rayOrigin,rayDir,minDist,maxDist,material,hitNormal);
-    vec4 color;
-    if(hitDist < maxDist){
-        vec3 hitPoint = rayOrigin + hitDist * rayDir;
-        color = calcMaterialLighting(hitPoint,material,hitNormal);
-        if(material.reflectivity > 0.0){
-            vec3 reflectDir = reflect(rayDir,hitNormal);
-            vec3 reflectOrigin = hitPoint + reflectDir * .01;
+    for(depth = 0; depth < MAX_REFLECTION_DEPTH; ++depth) {
+        Material material;
+        vec3 hitNormal;
+        float hitDist = rayMarch(rayOrigin, rayDir, 0.0, 100.0, material, hitNormal);
+        if(hitDist < 100.0) {
+            // If a hit is found, calculate the point and lighting
+            vec3 hitPoint = rayOrigin + hitDist * rayDir;
+            vec4 localColor = calcMaterialLighting(hitPoint, material, hitNormal);
+            accumulatedColor += reflectionAttenuation * localColor;
 
-            Material reflectedMaterial;
-            vec3 reflectedNormal;
-            float reflectDist = rayMarch(reflectOrigin,reflectDir,0.001,maxDist,reflectedMaterial,reflectedNormal);
+            // Prepare for next reflection
+            rayOrigin = hitPoint + hitNormal * 0.001; // Move slightly off the surface to avoid self-intersection
+            rayDir = reflect(rayDir, hitNormal);
+            reflectionAttenuation *= vec4(material.reflectivity); // Attenuate the reflection contribution
 
-            if(reflectDist < maxDist){
-                vec3 reflectPoint = reflectOrigin + reflectDist * reflectDir;
-                vec4 reflectColor = calcMaterialLighting(reflectPoint,reflectedMaterial,reflectedNormal);
-                color = mix(color,reflectColor,material.reflectivity);
+
+            // Debug: Visualize reflection depth or reflectivity
+            // accumulatedColor = vec4(depth * 0.25); // Visualize reflection depth
+            // accumulatedColor = vec4(material.reflectivity); // Visualize reflectivity
+            if(material.reflectivity <= 0.0) {
+                break; // No further reflections needed
             }
-
+        } else {
+            // If no hit, add background color and break
+            accumulatedColor += reflectionAttenuation * vec4(0.5, 0.5, 0.5, 1.0); // Background color
+            break;
         }
-    }else{
-        color = vec4(0.5,0.5,0.5,1.0);
     }
-    FragColor = color;
 
+    if (depth == MAX_REFLECTION_DEPTH) {
+        // Add background color if max depth is reached without a final hit
+        accumulatedColor += reflectionAttenuation * vec4(0.5, 0.5, 0.5, 1.0); // Background color
+    }
+
+    FragColor = accumulatedColor;
 }
