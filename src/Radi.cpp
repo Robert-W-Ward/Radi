@@ -11,7 +11,7 @@
 
 #define SPHERE 0
 #define BOX 1
-#define PYRAMID 2
+#define TRIANGLE 2
 
 const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
 const int VIEWPORT_X = 800;
@@ -26,14 +26,15 @@ struct alignas(16) Material{
     alignas(16) glm::vec4 color;
     float specular;
     float shininess;
+    float reflectivity;
 };
 
-struct Shape{
-    int type ;//0:sphere, 1:box/plane, 2:pyramid
+struct Shape3D{
+    int type ;//0:sphere, 1:box/plane, 2:TRIANGLE
     alignas(16) glm::vec4 position;
     alignas(16) glm::vec4 dimensions;
     Material material;
-
+    alignas(16) glm::vec4 extra;
 };
 
 
@@ -67,19 +68,34 @@ int main() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    std::vector<Shape> shapes = {
+    std::vector<Shape3D> shapes = {
         {
             SPHERE,
-            glm::vec4(0.0,5.0,0.0,0.0),
+            glm::vec4(-3.0,0.0,0.0,0.0),
             glm::vec4(1.0,0.0,0.0,0.0),
-            {glm::vec4(1.0,1.0,0.0,1.0),0.5,32.0 }
+            {glm::vec4(0.8,1.0,0.0,1.0),
+            0.5,//specular
+            32.0,//shininess
+            0.0//Reflectivity
+            }
         },
         {
             BOX,
-            glm::vec4(0.0,-5.0,0.0,0.0),
-            glm::vec4(5.0,1.0,5.0,0.0),
-            {glm::vec4(0.0,1.0,0.0,0.0),0.5,32.0}
-        }
+            glm::vec4(0.0,-3.0,0.0,0.0),
+            glm::vec4(10.0,0.5,10.0,0.0),
+            {glm::vec4(0.0,1.0,0.0,1.0),
+            0.5,
+            1.0,
+            0.8
+            }
+        },
+        // {
+        //     TRIANGLE,
+        //     glm::vec4(0.0,0.0,-5.0,0.0),
+        //     glm::vec4(1.0,0.0,0.0,0.0),
+        //     {glm::vec4(0.0,0.0,1.0,0.0),1.0,32.0},
+        //     glm::vec4(0.0,2.0,.0,1.0)
+        // }
     };
 
     float lastFrame = 0.0f;
@@ -89,7 +105,7 @@ int main() {
     GLuint ssbo;
     glGenBuffers(1,&ssbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER,ssbo);
-    glBufferData(GL_SHADER_STORAGE_BUFFER,sizeof(Shape)*shapes.size(),&shapes.at(0),GL_STATIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER,sizeof(Shape3D)*shapes.size(),&shapes.at(0),GL_STATIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,ssbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER,0);
     // Main loop
@@ -112,6 +128,7 @@ int main() {
         shader.setVec3("camUp",camera.Up);
         shader.setVec3("camRight",camera.Right);
         shader.setFloat("camFOV",camera.Zoom);
+        shader.setVec3("POINT_LIGHT_POS",glm::vec3(0.0,3.0,0.0));
         shader.setFloat("aspectRatio",aspectRatio);
         shader.setFloat("VP_X",VIEWPORT_X);
         shader.setFloat("VP_Y",VIEWPORT_Y);
