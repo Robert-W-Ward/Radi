@@ -6,10 +6,9 @@ const int MAX_SHAPES = 50;
 #define TRIANGLE 2
 #define PLANE 3
 
-
-
 out vec4 FragColor;
 const int MAX_REFLECTION_DEPTH = 3;
+
 struct Material{
     vec4 color;
     float specular;
@@ -22,16 +21,28 @@ struct Shape3D{
     int type;
     vec4 position;
     vec4 dimensions;
-    Material material;
     vec4 extra;
+    Material material;
 };
 
+struct Hit{
+    vec3 normal;
+    Material material;
+    vec3 point;
+    float distance;
+};
+
+struct Light{
+    //stub for now
+    int type;
+    vec3 position;
+    vec3 color;
+    float intensity;
+};
 
 layout(std430, binding = 0) buffer Shape3DBuffer {
     Shape3D shapes[];
 };
-
-
 
 uniform vec3 camPos;          // Camera position
 uniform vec3 camDir;          // Camera direction
@@ -39,116 +50,13 @@ uniform vec3 camUp;           // Camera up vector
 uniform vec3 camRight;        // Camera right vector
 uniform float camFOV;         // Camera field of view
 uniform float aspectRatio;    // Aspect ratio of the window
-uniform float VP_X;
-uniform float VP_Y;
-uniform vec3 POINT_LIGHT_POS;
-
+uniform float VP_X;           // Viewport X
+uniform float VP_Y;           // Viewport Y
+uniform vec3 POINT_LIGHT_POS; // Point lights position in the world
 
 float dot2( in vec3 v ) { return dot(v,v); }
-vec4 sphereSDF(vec3 rayPos, vec3 sphereCenter, float sphereRadius) {
-    float dist = length(rayPos - sphereCenter) - sphereRadius;
-    vec3 normal = normalize(rayPos-sphereCenter);
-    return vec4(dist,normal);
-}
-vec4 boxSDF(vec3 collisonPoint, vec3 b,vec3 boxPos){
-    vec3 q = abs(collisonPoint - boxPos) - b;
-    float dist =length(max(q,0.0))+ min(max(q.x,max(q.y,q.z)),0.0);
-    vec3 normal = normalize(sign(collisonPoint - boxPos) * step(b, abs(collisonPoint - boxPos)));
-    return vec4(dist,normal);
-}
-vec4 udTriangle( vec3 p, vec3 a, vec3 b, vec3 c )
-{
-    vec3 ba = b - a; vec3 pa = p - a;
-    vec3 cb = c - b; vec3 pb = p - b;
-    vec3 ac = a - c; vec3 pc = p - c;
-    vec3 nor = cross( ba, ac );
 
-    float distance = sqrt(
-        (sign(dot(cross(ba,nor),pa)) +
-         sign(dot(cross(cb,nor),pb)) +
-         sign(dot(cross(ac,nor),pc)) < 2.0)
-         ?
-         min( min(
-         dot2(ba*clamp(dot(ba,pa)/dot(ba,ba),0.0,1.0)-pa),
-         dot2(cb*clamp(dot(cb,pb)/dot(cb,cb),0.0,1.0)-pb) ),
-         dot2(ac*clamp(dot(ac,pc)/dot(ac,ac),0.0,1.0)-pc) )
-         :
-         dot(nor,pa) * dot(nor,pa) / dot(nor, nor) );
-
-    vec3 normalizedNor = normalize(nor);
-
-    return vec4(distance, normalizedNor.x, normalizedNor.y, normalizedNor.z);
-}
-float sdPlane(vec3 p, vec3 n, float h){
-    return dot(p,n) +h;
-}
-
-Material defaultMaterial(){
-    return Material(vec4(0.75),.5,32.0,0.0);
-}
-
-
-vec4 getSceneSDF(vec3 point, out Material material) {
-    float closestDist = 1e9; // Use a very high value to start with
-    material = defaultMaterial(); // Default material in case no hit
-    vec3 closestNormal = vec3(0.0);
-    for (int i = 0; i < shapes.length(); ++i) {
-        float dist = 1e9; // Initialize with a high value
-        vec3 normal = vec3(0.0);
-        vec4 result;
-        if (shapes[i].type == 0) {
-            result = sphereSDF(point,shapes[i].position.xyz,shapes[i].dimensions.x);
-            dist = result.x;
-        } else if (shapes[i].type == BOX) {
-            result = boxSDF(point,shapes[i].dimensions.xyz,shapes[i].position.xyz);
-            dist = result.x;
-        }
-        else if(shapes[i].type == TRIANGLE){
-            result = udTriangle(point,shapes[i].position.xyz,shapes[i].dimensions.xyz,shapes[i].extra.xyz);
-            dist=  result.x;
-        }
-        else if(shapes[i].type == PLANE){
-            dist = sdPlane(point,shapes[i].position.xyz,1.0);
-           
-            result = vec4(dist,shapes[i].dimensions);
-        }
-        normal = result.yzw;
-
-        // Add more shape types here as needed
-
-        if (dist < closestDist) {
-            closestDist = dist;
-            closestNormal = normal;
-            material = shapes[i].material;
-        }
-    }
-
-    return vec4(closestDist,closestNormal);
-}
-
-
-vec4 calcMaterialLighting(vec3 point, Material mat,vec3 normal){
-    vec3 lightDir = normalize(POINT_LIGHT_POS - point);
-    float diff = max(dot(normal,lightDir),0.0);
-
-    //Ambient Lighting
-    vec3 ambientLightColor = vec3(0.2, 0.2, 0.2); // Example: low intensity gray light
-    vec4 ambientColor = mat.color * vec4(ambientLightColor, 1.0);
-
-    //Specular Lighting highlights
-    vec3 viewDir = normalize(camPos - point);
-    vec3 reflectDirSpecular = reflect(-lightDir,normal);
-    float spec = pow(max(dot(viewDir,reflectDirSpecular),0.0),mat.shininess) * mat.specular;
-
-    //Diffuse Lighting
-    vec4 diffuseColor = mat.color * diff;
-    vec4 specularColor = vec4(1.0) * spec; 
-
-    return ambientColor + diffuseColor + specularColor;
-
-}
-
-//Gets the Ray direction throught he fullscreen quad based on the direction the camera is facing
+// //Gets the Ray direction throught he fullscreen quad based on the direction the camera is facing
 vec3 getRayDir(vec2 screenCoords){
     float scale = tan(radians(camFOV*0.5));
     vec2 screenPos = screenCoords * scale;
@@ -156,70 +64,199 @@ vec3 getRayDir(vec2 screenCoords){
     return normalize(camRight*screenPos.x + camUp * screenPos.y + camDir);
 }
 
-// Ray marching function
-float rayMarch(vec3 rayOrigin, vec3 rayDir, float start, float end, out Material material,out vec3 hitNormal) {
-    float closestDist = 1e9;
-    vec3 normal;
-    for (float i = 0.0; i < 100.0; i++) {
-        vec3 pos = rayOrigin + start * rayDir;
-        vec4 result = getSceneSDF(pos,material);
-        float distance = result.x; 
-        normal = result.yzw;
+float sphereSDF(vec3 rayPos, vec3 sphereCenter, float sphereRadius) {
+    return length(rayPos - sphereCenter) - sphereRadius;
+}
+float sdBox(vec3 p, vec3 b, vec3 position, vec3 scale) {
+    // Apply inverse scale to point p to simulate scaling the box
+    p = (p - position) / scale;
+    vec3 q = abs(p) - b;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) * min(min(scale.x, scale.y), scale.z);
+}
+float udTriangle( vec3 p, vec3 a, vec3 b, vec3 c )
+{
+  vec3 ba = b - a; vec3 pa = p - a;
+  vec3 cb = c - b; vec3 pb = p - b;
+  vec3 ac = a - c; vec3 pc = p - c;
+  vec3 nor = cross( ba, ac );
 
-        if (distance < 0.001) { // Intersection threshold
-            hitNormal = normal;
-            return start; // Hit color
-        }
-        start += distance;
-        if (start >= end) {
-            return end;
-        }
-    }
-    return end; // Miss color
+  return sqrt(
+    (sign(dot(cross(ba,nor),pa)) +
+     sign(dot(cross(cb,nor),pb)) +
+     sign(dot(cross(ac,nor),pc))<2.0)
+     ?
+     min( min(
+     dot2(ba*clamp(dot(ba,pa)/dot2(ba),0.0,1.0)-pa),
+     dot2(cb*clamp(dot(cb,pb)/dot2(cb),0.0,1.0)-pb) ),
+     dot2(ac*clamp(dot(ac,pc)/dot2(ac),0.0,1.0)-pc) )
+     :
+     dot(nor,pa)*dot(nor,pa)/dot2(nor) );
+}
+float sdPlane(vec3 p, vec3 n, float h){
+    return dot(p,n) + h;
 }
 
-void main() {
-    //Normalize UV
-    vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
-    vec3 rayOrigin = camPos;
-    vec3 rayDir = getRayDir(screenCoords);
-    vec4 accumulatedColor = vec4(0.0); // Initialize accumulated color
-    vec4 reflectionAttenuation = vec4(1.0); // Initial reflection contribution is full
-    int depth;
+Material defaultMaterial(){
+    return Material(vec4(0.75),.5,32.0,0.0);
+}
+Material backgroundMaterial(){
+    return Material(vec4(0.0),1.0,1.0,0.0);
+}
 
-    for(depth = 0; depth < MAX_REFLECTION_DEPTH; ++depth) {
-        Material material;
-        vec3 hitNormal;
-        float hitDist = rayMarch(rayOrigin, rayDir, 0.0, 100.0, material, hitNormal);
-        if(hitDist < 100.0) {
-            // If a hit is found, calculate the point and lighting
-            vec3 hitPoint = rayOrigin + hitDist * rayDir;
-            vec4 localColor = calcMaterialLighting(hitPoint, material, hitNormal);
-            accumulatedColor += reflectionAttenuation * localColor;
+vec4 CalculateLighting(vec3 point, Material material, vec3 normal){
+    vec3 lightDirection = normalize(POINT_LIGHT_POS - point);
 
-            // Prepare for next reflection
-            rayOrigin = hitPoint + hitNormal * 0.001; // Move slightly off the surface to avoid self-intersection
-            rayDir = reflect(rayDir, hitNormal);
-            reflectionAttenuation *= vec4(material.reflectivity); // Attenuate the reflection contribution
+    /// Ambient
+    vec4 ambientColor = vec4(0.1,0.1,0.1,1.0);
 
+    // Diffuse
+    float diffuse = max(dot(normal, lightDirection),0.0);
+    vec4 diffuseColor = diffuse *  material.color ;
 
-            // Debug: Visualize reflection depth or reflectivity
-            // accumulatedColor = vec4(depth * 0.25); // Visualize reflection depth
-            // accumulatedColor = vec4(material.reflectivity); // Visualize reflectivity
-            if(material.reflectivity <= 0.0) {
-                break; // No further reflections needed
-            }
-        } else {
-            // If no hit, add background color and break
-            accumulatedColor += reflectionAttenuation * vec4(0.5, 0.5, 0.5, 1.0); // Background color
+    //Specular
+    vec3 specularReflectDir = reflect(-lightDirection,normal);
+    float specular = pow(max(dot(camDir,specularReflectDir),0.0),material.shininess);
+    vec4 specularColor = specular * vec4(1.0,1.0,1.0,1.0) * material.specular;
+
+    return ambientColor + diffuseColor + specularColor;
+}
+float SceneSDF(vec3 point,out Material hitMaterial){
+    float closestDist = 1e9;
+    float distance = 1e9;
+    for(int i =0; i< shapes.length();++i){
+        switch(shapes[i].type){
+            case SPHERE:
+                distance = sphereSDF(point,shapes[i].position.xyz,shapes[i].dimensions.x);
+                break;
+            case BOX:
+                distance = sdBox(point,shapes[i].dimensions.xyz/2.0,shapes[i].position.xyz,vec3(1.0));
+                break;
+            case TRIANGLE:
+                distance = udTriangle(point,shapes[i].position.xyz,shapes[i].dimensions.xyz,shapes[i].extra.xyz);
+                break;
+            case PLANE:
+                distance = sdPlane(point,normalize(shapes[i].dimensions.xyz),shapes[i].dimensions.y);
+                break;
+            default:
+                break;
+        }
+        if(distance < closestDist){
+            closestDist = distance;
+            hitMaterial = shapes[i].material;
+        }
+    }
+    return closestDist;
+}
+vec3 CalculateNormal(vec3 p, float epsilon) {
+    const vec3 dx = vec3(epsilon, 0.0, 0.0);
+    const vec3 dy = vec3(0.0, epsilon, 0.0);
+    const vec3 dz = vec3(0.0, 0.0, epsilon);
+    Material m = defaultMaterial();
+    float d = SceneSDF(p,m);
+    vec3 n = vec3(
+        SceneSDF(p + dx,m) - d,
+        SceneSDF(p + dy,m) - d,
+        SceneSDF(p + dz,m) - d
+    );
+
+    return normalize(n);
+}
+Hit MarchRay(
+    vec3 origin, 
+    vec3 direction, 
+    int numberOfSteps, 
+    float MIN_HIT_DISTANCE,
+    float MAX_TRAVEL_DIST)
+    {
+
+    vec3 ro = origin;
+    vec3 rd = direction;
+    float totalDistance = 0.0;
+    float nearestDistance = 1e9;
+    Material hitMaterial;
+    for(float i = 0;i< numberOfSteps; ++i){
+        vec3 position = origin + (totalDistance) * direction;
+
+        //Calculate distance from nearest object in the scene
+        nearestDistance = SceneSDF(position,hitMaterial);
+
+        //If the nearest object is close enough to be considered "hit" return
+        if(nearestDistance < MIN_HIT_DISTANCE){
+            vec3 hitPoint = position;
+            vec3 normal = CalculateNormal(hitPoint,0.001);
+            return Hit(normal,hitMaterial,hitPoint,totalDistance);
+        }
+
+        // Misses everything
+        if(nearestDistance > MAX_TRAVEL_DIST){
             break;
         }
-    }
 
-    if (depth == MAX_REFLECTION_DEPTH) {
-        // Add background color if max depth is reached without a final hit
-        accumulatedColor += reflectionAttenuation * vec4(0.5, 0.5, 0.5, 1.0); // Background color
+        totalDistance += nearestDistance;
     }
-
-    FragColor = accumulatedColor;
+    return Hit(vec3(0.0,0.0,0.0),backgroundMaterial(),vec3(0.0),MAX_TRAVEL_DIST);
 }
+
+
+void main() {
+    //screen setup
+    vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
+    Hit h = MarchRay(camPos,getRayDir(screenCoords),100,0.001,100);
+    if(h.distance < 100.0){
+        vec4 color = CalculateLighting(h.point,h.material,h.normal);
+        if(h.material.reflectivity>0.0){
+            vec3 reflectDir = reflect(normalize(getRayDir(screenCoords)), h.normal);
+            vec3 reflectionOrigin = h.point + h.normal * 0.001;
+            Hit reflectedHit = MarchRay(reflectionOrigin, reflectDir, 100, 0.001, 100);
+
+            if(reflectedHit.distance<100.0){
+                vec4 reflectedColor = CalculateLighting(reflectedHit.point,reflectedHit.material,reflectedHit.normal);
+                color = mix(color,reflectedColor,h.material.reflectivity);
+            }
+        }
+
+        FragColor = color;
+    }else{
+        FragColor = vec4(0.0,0.0,0.0,1.0);
+    }
+}
+
+
+    // vec4 accumulatedColor = vec4(0.0); // Initialize accumulated color
+    // vec4 reflectionAttenuation = vec4(1.0); // Initial reflection contribution is full
+    // int depth;
+
+    // for(depth = 0; depth < MAX_REFLECTION_DEPTH; ++depth) {
+    //     Material material;
+    //     vec3 hitNormal;
+    //     float hitDist = rayMarch(rayOrigin, rayDir, 0.0, 100.0, material, hitNormal);
+    //     if(hitDist < 100.0) {
+    //         // If a hit is found, calculate the point and lighting
+    //         vec3 hitPoint = rayOrigin + hitDist * rayDir;
+    //         vec4 localColor = calcMaterialLighting(hitPoint, material, hitNormal);
+    //         accumulatedColor += reflectionAttenuation * localColor;
+
+    //         // Prepare for next reflection
+    //         rayOrigin = hitPoint + hitNormal * 0.001; // Move slightly off the surface to avoid self-intersection
+    //         rayDir = reflect(rayDir, hitNormal);
+    //         reflectionAttenuation *= vec4(material.reflectivity); // Attenuate the reflection contribution
+
+
+    //         // Debug: Visualize reflection depth or reflectivity
+    //         // accumulatedColor = vec4(depth * 0.25); // Visualize reflection depth
+    //         // accumulatedColor = vec4(material.reflectivity); // Visualize reflectivity
+    //         if(material.reflectivity <= 0.0) {
+    //             break; // No further reflections needed
+    //         }
+    //     } else {
+    //         // If no hit, add background color and break
+    //         accumulatedColor += reflectionAttenuation * vec4(0.5, 0.5, 0.5, 1.0); // Background color
+    //         break;
+    //     }
+    // }
+
+    // if (depth == MAX_REFLECTION_DEPTH) {
+    //     // Add background color if max depth is reached without a final hit
+    //     accumulatedColor += reflectionAttenuation * vec4(0.5, 0.5, 0.5, 1.0); // Background color
+    // }
+

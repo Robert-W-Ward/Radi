@@ -33,8 +33,8 @@ struct Shape3D{
     int type ;//0:sphere, 1:box/plane, 2:TRIANGLE
     alignas(16) glm::vec4 position;
     alignas(16) glm::vec4 dimensions;
-    Material material;
     alignas(16) glm::vec4 extra;
+    Material material;
 };
 
 
@@ -73,20 +73,21 @@ int main() {
             SPHERE,
             glm::vec4(-3.0,0.0,0.0,0.0),
             glm::vec4(1.0,0.0,0.0,0.0),
+            glm::vec4(0),
             {glm::vec4(0.8,1.0,0.0,1.0),
             0.5,//specular
             32.0,//shininess
-            0.0//Reflectivity
-
+            0.5//Reflectivity
             }
         },
         {
             BOX,
-            glm::vec4(0.0,5.0,0.0,0.0),
+            glm::vec4(5.0,5.0,0.0,0.0),
             glm::vec4(10.0,0.5,10.0,0.0),
+            glm::vec4(0),
             {glm::vec4(0.0,1.0,0.0,1.0),
             0.5,
-            1.0,
+            32.0,
             0.5
             }
         },
@@ -94,21 +95,22 @@ int main() {
             TRIANGLE,
             glm::vec4(0.0,0.0,-5.0,0.0),
             glm::vec4(1.0,0.0,0.0,0.0),
+            glm::vec4(0.0,2.0,.0,1.0),
             {glm::vec4(0.89,0.3,1.0,0.0),
-            1.0,
+            0.5,
             32.0,
             0.0
             },
-            glm::vec4(0.0,2.0,.0,1.0),
             
         },
         {
             PLANE,
+            glm::vec4(0.0,0.0,0.0,0.0),
             glm::vec4(0.0,1.0,0.0,0.0),
-            glm::vec4(0.0,1.0,0.0,0.0),
-            {glm::vec4(0.0,0.0,1.0,1.0),
-            1.0,
-            1.0,
+            glm::vec4(0),
+            {glm::vec4(0.5,1.0,1.0,1.0),
+            0.5,
+            32.0,
             0.0
             },
         }
@@ -144,7 +146,7 @@ int main() {
         shader.setVec3("camUp",camera.Up);
         shader.setVec3("camRight",camera.Right);
         shader.setFloat("camFOV",camera.Zoom);
-        shader.setVec3("POINT_LIGHT_POS",glm::vec3(0.0,3.0,0.0));
+        shader.setVec3("POINT_LIGHT_POS",glm::vec3(0.0,7.0,0.0));
         shader.setFloat("aspectRatio",aspectRatio);
         shader.setFloat("VP_X",VIEWPORT_X);
         shader.setFloat("VP_Y",VIEWPORT_Y);
