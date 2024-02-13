@@ -4,7 +4,7 @@ const int MAX_SHAPES = 50;
 #define SPHERE 0
 #define BOX 1
 #define TRIANGLE 2
-
+#define PLANE 3
 
 
 
@@ -79,7 +79,9 @@ vec4 udTriangle( vec3 p, vec3 a, vec3 b, vec3 c )
 
     return vec4(distance, normalizedNor.x, normalizedNor.y, normalizedNor.z);
 }
-
+float sdPlane(vec3 p, vec3 n, float h){
+    return dot(p,n) +h;
+}
 
 Material defaultMaterial(){
     return Material(vec4(0.75),.5,32.0,0.0);
@@ -105,7 +107,11 @@ vec4 getSceneSDF(vec3 point, out Material material) {
             result = udTriangle(point,shapes[i].position.xyz,shapes[i].dimensions.xyz,shapes[i].extra.xyz);
             dist=  result.x;
         }
-        dist = result.x;
+        else if(shapes[i].type == PLANE){
+            dist = sdPlane(point,shapes[i].position.xyz,1.0);
+           
+            result = vec4(dist,shapes[i].dimensions);
+        }
         normal = result.yzw;
 
         // Add more shape types here as needed

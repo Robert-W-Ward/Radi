@@ -12,7 +12,7 @@
 #define SPHERE 0
 #define BOX 1
 #define TRIANGLE 2
-
+#define PLANE 3
 const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
 const int VIEWPORT_X = 800;
 const int VIEWPORT_Y = 600;
@@ -77,25 +77,41 @@ int main() {
             0.5,//specular
             32.0,//shininess
             0.0//Reflectivity
+
             }
         },
         {
             BOX,
-            glm::vec4(0.0,-3.0,0.0,0.0),
+            glm::vec4(0.0,5.0,0.0,0.0),
             glm::vec4(10.0,0.5,10.0,0.0),
             {glm::vec4(0.0,1.0,0.0,1.0),
             0.5,
             1.0,
-            1.0
+            0.5
             }
         },
-        // {
-        //     TRIANGLE,
-        //     glm::vec4(0.0,0.0,-5.0,0.0),
-        //     glm::vec4(1.0,0.0,0.0,0.0),
-        //     {glm::vec4(0.0,0.0,1.0,0.0),1.0,32.0},
-        //     glm::vec4(0.0,2.0,.0,1.0)
-        // }
+        {
+            TRIANGLE,
+            glm::vec4(0.0,0.0,-5.0,0.0),
+            glm::vec4(1.0,0.0,0.0,0.0),
+            {glm::vec4(0.89,0.3,1.0,0.0),
+            1.0,
+            32.0,
+            0.0
+            },
+            glm::vec4(0.0,2.0,.0,1.0),
+            
+        },
+        {
+            PLANE,
+            glm::vec4(0.0,1.0,0.0,0.0),
+            glm::vec4(0.0,1.0,0.0,0.0),
+            {glm::vec4(0.0,0.0,1.0,1.0),
+            1.0,
+            1.0,
+            0.0
+            },
+        }
     };
 
     float lastFrame = 0.0f;
