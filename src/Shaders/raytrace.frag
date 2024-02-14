@@ -6,6 +6,11 @@ const int MAX_SHAPES = 50;
 #define TRIANGLE 2
 #define PLANE 3
 
+
+#define SPOT_LIGHT 999
+#define AREA 998
+#define DIRECTIONAL 997
+
 out vec4 FragColor;
 const int MAX_REFLECTION_DEPTH = 3;
 
@@ -33,15 +38,19 @@ struct Hit{
 };
 
 struct Light{
-    //stub for now
     int type;
-    vec3 position;
-    vec3 color;
+    vec4 position;
+    vec4 direction;
+    vec4 color;
     float intensity;
 };
 
 layout(std430, binding = 0) buffer Shape3DBuffer {
     Shape3D shapes[];
+};
+
+layout(std430, binding = 1) buffer LightBuffer{
+    Light lights[];
 };
 
 uniform vec3 camPos;          // Camera position
@@ -52,8 +61,7 @@ uniform float camFOV;         // Camera field of view
 uniform float aspectRatio;    // Aspect ratio of the window
 uniform float VP_X;           // Viewport X
 uniform float VP_Y;           // Viewport Y
-uniform vec3 POINT_LIGHT_POS; // Point lights position in the world
-
+uniform bool isDebug;
 float dot2( in vec3 v ) { return dot(v,v); }
 
 // //Gets the Ray direction throught he fullscreen quad based on the direction the camera is facing
@@ -104,20 +112,35 @@ Material backgroundMaterial(){
 }
 
 vec4 CalculateLighting(vec3 point, Material material, vec3 normal){
-    vec3 lightDirection = normalize(POINT_LIGHT_POS - point);
-
-    /// Ambient
     vec4 ambientColor = vec4(0.1,0.1,0.1,1.0);
+    vec4 diffuseColor = vec4(0.0);
+    vec4 specularColor = vec4(0.0);
 
-    // Diffuse
-    float diffuse = max(dot(normal, lightDirection),0.0);
-    vec4 diffuseColor = diffuse *  material.color ;
+    for(int i = 0; i < lights.length();++i){
+        vec3 lightDir;
+        switch(lights[i].type){
+            case SPOT_LIGHT:
+                lightDir = normalize(lights[i].position.xyz - point);
+                break;
+            case AREA:
+                break;
+            case DIRECTIONAL:
+                lightDir = normalize(-lights[i].direction.xyz);
+                break;
+            default:
+                break;
+        }        
+        float intensity = lights[i].intensity;
+        vec4 lightColor = lights[i].color * intensity;
+        // Diffuse
+        float diffuse = max(dot(normal, lightDir),0.0);
+        diffuseColor = diffuse * lightColor * material.color ;
 
-    //Specular
-    vec3 specularReflectDir = reflect(-lightDirection,normal);
-    float specular = pow(max(dot(camDir,specularReflectDir),0.0),material.shininess);
-    vec4 specularColor = specular * vec4(1.0,1.0,1.0,1.0) * material.specular;
-
+        //Specular
+        vec3 specularReflectDir = reflect(-lightDir,normal);
+        float specular = pow(max(dot(camDir,specularReflectDir),0.0),material.shininess);
+        specularColor = specular * vec4(1.0,1.0,1.0,1.0) * material.specular;
+    }
     return ambientColor + diffuseColor + specularColor;
 }
 float SceneSDF(vec3 point,out Material hitMaterial){
@@ -147,6 +170,7 @@ float SceneSDF(vec3 point,out Material hitMaterial){
     }
     return closestDist;
 }
+
 vec3 CalculateNormal(vec3 p, float epsilon) {
     const vec3 dx = vec3(epsilon, 0.0, 0.0);
     const vec3 dy = vec3(0.0, epsilon, 0.0);
@@ -161,6 +185,7 @@ vec3 CalculateNormal(vec3 p, float epsilon) {
 
     return normalize(n);
 }
+
 Hit MarchRay(
     vec3 origin, 
     vec3 direction, 
@@ -201,7 +226,7 @@ Hit MarchRay(
 void main() {
     //screen setup
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
-    Hit h = MarchRay(camPos,getRayDir(screenCoords),100,0.001,100);
+    Hit h = MarchRay(camPos,getRayDir(screenCoords),100,0.001,1000);
     if(h.distance < 100.0){
         vec4 color = CalculateLighting(h.point,h.material,h.normal);
         if(h.material.reflectivity>0.0){
@@ -216,47 +241,10 @@ void main() {
         }
 
         FragColor = color;
+        if(isDebug)
+            FragColor = vec4(h.normal,1.0);
     }else{
-        FragColor = vec4(0.0,0.0,0.0,1.0);
+        FragColor = vec4(0.5,0.5,0.5,1.0);
     }
 }
-
-
-    // vec4 accumulatedColor = vec4(0.0); // Initialize accumulated color
-    // vec4 reflectionAttenuation = vec4(1.0); // Initial reflection contribution is full
-    // int depth;
-
-    // for(depth = 0; depth < MAX_REFLECTION_DEPTH; ++depth) {
-    //     Material material;
-    //     vec3 hitNormal;
-    //     float hitDist = rayMarch(rayOrigin, rayDir, 0.0, 100.0, material, hitNormal);
-    //     if(hitDist < 100.0) {
-    //         // If a hit is found, calculate the point and lighting
-    //         vec3 hitPoint = rayOrigin + hitDist * rayDir;
-    //         vec4 localColor = calcMaterialLighting(hitPoint, material, hitNormal);
-    //         accumulatedColor += reflectionAttenuation * localColor;
-
-    //         // Prepare for next reflection
-    //         rayOrigin = hitPoint + hitNormal * 0.001; // Move slightly off the surface to avoid self-intersection
-    //         rayDir = reflect(rayDir, hitNormal);
-    //         reflectionAttenuation *= vec4(material.reflectivity); // Attenuate the reflection contribution
-
-
-    //         // Debug: Visualize reflection depth or reflectivity
-    //         // accumulatedColor = vec4(depth * 0.25); // Visualize reflection depth
-    //         // accumulatedColor = vec4(material.reflectivity); // Visualize reflectivity
-    //         if(material.reflectivity <= 0.0) {
-    //             break; // No further reflections needed
-    //         }
-    //     } else {
-    //         // If no hit, add background color and break
-    //         accumulatedColor += reflectionAttenuation * vec4(0.5, 0.5, 0.5, 1.0); // Background color
-    //         break;
-    //     }
-    // }
-
-    // if (depth == MAX_REFLECTION_DEPTH) {
-    //     // Add background color if max depth is reached without a final hit
-    //     accumulatedColor += reflectionAttenuation * vec4(0.5, 0.5, 0.5, 1.0); // Background color
-    // }
 
