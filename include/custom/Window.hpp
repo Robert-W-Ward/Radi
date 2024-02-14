@@ -21,8 +21,10 @@ namespace Radi::Types{
         // Input handling
         void ProcessInput(float deltaTime );
 
+
+        GLFWwindow* GetGLFWWindow();
     private:
-        GLFWwindow* window;
+        GLFWwindow* glWindow;
         int width;
         int height;
         const char* title;

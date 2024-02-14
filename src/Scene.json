@@ -1,0 +1,78 @@
+{
+    "ShapeTypes":{
+        "SPHERE":0,
+        "BOX":1,
+        "TRIANGLE":2,
+        "PLANE":3
+    },
+    "LightTypes":{
+        "SPOT":999,
+        "DIRECTIONAL":997
+    },
+    "Objects": [
+        {
+            "Type": 0,
+            "Position": {"x": -3.0, "y": 0.0, "z": 0.0, "w": 0.0},
+            "Dimensions": {"x":1.0,"y":0.0,"z":0.0,"w":0.0},
+            "Extra": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0},
+            "Material": {
+                "Color": {"r": 0.0, "g": 1.0, "b": 1.0, "a": 1.0},
+                "Specular": 0.5,
+                "Shininess": 32.0,
+                "Reflectivity": 0.5
+            }
+        },
+        {
+            "Type": 1,
+            "Position": {"x": 5.0, "y": 5.0, "z": 0.0, "w": 0.0},
+            "Dimensions": {"x": 10.0, "y": 0.5, "z": 10.0, "w": 0.0},
+            "Extra": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0},
+            "Material": {
+                "Color": {"r": 0.0, "g": 1.0, "b": 0.0, "a": 1.0},
+                "Specular": 0.5,
+                "Shininess": 32.0,
+                "Reflectivity": 0.0
+            }
+        },
+        {
+            "Type": 2,
+            "Position": {"x": 0.0, "y": 0.0, "z": -5.0, "w": 0.0},
+            "Dimensions": {"x": 1.0, "y": 0.0, "z": 0.0, "w": 0.0},
+            "Extra": {"x": 0.0, "y": 2.0, "z": 0.0, "w": 1.0},
+            "Material": {
+                "Color": {"r": 0.89, "g": 0.3, "b": 1.0, "a": 0.0},
+                "Specular": 0.5,
+                "Shininess": 32.0,
+                "Reflectivity": 0.0
+            }
+        },
+        {
+            "Type": 3,
+            "Position": {"x": 0.0, "y": -3.0, "z": 0.0, "w": 0.0},
+            "Dimensions": {"x": 0.0, "y": 1.0, "z": 0.0, "w": 0.0},
+            "Extra": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0},
+            "Material": {
+                "Color": {"r": 0.0, "g": 0.0, "b": 1.0, "a": 1.0},
+                "Specular": 0.5,
+                "Shininess": 32.0,
+                "Reflectivity": 0.0
+            }
+        }
+    ],
+    "Lights":[
+        
+        {
+            "Type":997,
+            "Position":{"x":0,"y":5.0,"z":0,"w":0},
+            "Direction":{"x":0,"y":-1.0,"z":0,"w":0},
+            "Color":{"r":1.0,"g":1.0,"b":1.0,"a":1.0},
+            "Intensity":0.8
+        }
+
+    ],
+    "Viewport":{
+        "FOV":45,
+        "X":800,
+        "Y":600
+    }
+}
