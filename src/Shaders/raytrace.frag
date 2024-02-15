@@ -267,42 +267,44 @@ Hit MarchRay(
             if(hitMaterial.transparency>0.0){
                 origin = hitPoint + normal * 0.01;
                 totalDistance += 0.01;
+                hasHit = false;
                 continue;
             }else{
                 // Calculate color, including effects of accumulatedColor for translucency
                 // Break if opaque or if exiting a translucent material
                 break;
             }
-
+        }else{
+            totalDistance += nearestDistance;
         }
-        totalDistance += nearestDistance;
     }
     if(hasHit){
         return Hit(normal,hitMaterial,hitPoint,totalDistance);
     }else{
-        return Hit(vec3(0.0,0.0,0.0),backgroundMaterial(),vec3(0.0),MAX_TRAVEL_DIST);
+        return Hit(vec3(0.0,0.0,0.0),backgroundMaterial(),origin + direction * MAX_TRAVEL_DIST,MAX_TRAVEL_DIST);
     }
 }
 
-void AccumulateTransparency(
-    inout Hit h,
-    vec3 rd,
-    inout vec4 accumulatedColor, 
-    inout float accumulatedTransparency){
+vec4 AccumulateTransparency(Hit h,vec3 rd,vec4 color){
+    vec3 ro = h.point + h.normal *0.001;
+    float accumulatedTransparency = 1.0;
+    vec4 accumulatedColor = color;
+    if(h.material.transparency > 0.0){
+        for(int i = 0; i< 3; ++i){
+            Hit cont = MarchRay(ro,rd,100,0.001,1000);
+            if(cont.distance < 100.0 && cont.material.transparency > 0.0){
+                vec4 behindColor = CalculateLighting(cont.point,cont.material,cont.normal,false);
+                accumulatedColor = mix(accumulatedColor, behindColor, accumulatedTransparency * (1.0 - cont.material.transparency));
+                accumulatedTransparency *= cont.material.transparency;
+                ro = cont.point + cont.normal * 0.001;
+            }else{
+                // accumulatedColor = mix(accumulatedColor,color,accumulatedTransparency);
+                break;
+            }
+            if (accumulatedTransparency < 0.01) break;
 
-    vec3 ro;
-
-     for(int i = 0; i< 3; ++i){
-        ro = h.point + h.normal * 0.001;
-        h = MarchRay(ro,rd,500,0.0001,100);
-
-        if(h.distance < 100.0){
-            vec4 color = CalculateLighting(h.point,h.material,h.normal,true);
-            accumulatedColor = mix(accumulatedColor, color, 1.0 - accumulatedTransparency);
-            accumulatedTransparency *= h.material.transparency;
-        }else{
-            break;
         }
+        return accumulatedColor + color * accumulatedTransparency;
     }
 }
 
@@ -323,9 +325,6 @@ void main() {
     //screen setup
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
 
-    float accumulatedTransparency = 1.0;
-    vec4 accumulatedColor = vec4(0.0);
-
     vec3 ro = camPos;
     vec3 rd = getRayDir(screenCoords);
     Hit h = MarchRay(ro,rd,100,0.001,1000);
@@ -333,8 +332,18 @@ void main() {
     if(h.distance < 100.0){
         vec4 color = CalculateLighting(h.point,h.material,h.normal,false);
         vec4 reflectedColor = AccumulateReflections(h,rd);
-        //AccumulateTransparency(h,rd,accumulatedColor,accumulatedTransparency);
-        FragColor = mix(color,reflectedColor,h.material.reflectivity);
+        vec4 finalColor = color;
+
+        if(h.material.reflectivity > 0.0){
+            finalColor = mix(finalColor,reflectedColor,h.material.reflectivity);
+        }
+
+        if(h.material.transparency >0.0){
+            vec4 transLucentColor = AccumulateTransparency(h,rd,finalColor);
+            finalColor = mix(finalColor,transLucentColor,h.material.transparency);
+        }
+
+        FragColor = finalColor;
     }else{
         FragColor = vec4(0.5,0.5,0.5,1.0);//Background
     }

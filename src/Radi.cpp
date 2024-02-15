@@ -46,11 +46,11 @@
             return -1;
         }
         Radi::Types::Camera camera;
-        Radi::Types::Shader shader((PROJECT_ROOT + "\\shaders\\raytrace.vert").c_str(),(PROJECT_ROOT + "\\shaders\\raytrace.frag").c_str());
+        Radi::Types::Shader shader((PROJECT_ROOT + "\\Shaders\\raytrace.vert").c_str(),(PROJECT_ROOT + "\\shaders\\raytrace.frag").c_str());
         window.SetCamera(&camera);
 
         Radi::Types::RayMarchScene* RayMarchedScene = new Radi::Types::RayMarchScene();
-        RayMarchedScene->LoadSceneFromJson((PROJECT_ROOT + "\\Scene2.json").c_str());
+        RayMarchedScene->LoadSceneFromJson((PROJECT_ROOT + "\\Scenes\\Scene3.json").c_str());
 
         unsigned int VAO, VBO;
         setupFullscreenQuad(VAO,VBO);
