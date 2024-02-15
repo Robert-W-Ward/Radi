@@ -174,6 +174,7 @@ vec4 CalculateLighting(vec3 point, Material material, vec3 normal,bool insideMat
             case AREA:
                 break;
             case DIRECTIONAL:
+                lightDist = 10000.0;
                 lightDir = normalize(-lights[i].direction.xyz);
                 break;
             default:
@@ -196,12 +197,12 @@ vec4 CalculateLighting(vec3 point, Material material, vec3 normal,bool insideMat
 
         // Diffuse
         float diffuse = max(dot(normal, lightDir),0.0);
-        diffuseColor = shadow * diffuse * lightColor * material.color ;
+        diffuseColor += (diffuse * lightColor * material.color)*attenuation *shadow;
 
         //Specular
         vec3 specularReflectDir = reflect(-lightDir,normal);
         float specular = pow(max(dot(camDir,specularReflectDir),0.0),material.shininess);
-        specularColor = shadow * specular * vec4(1.0,1.0,1.0,1.0) * material.specular;
+        specularColor +=  (specular * vec4(1.0,1.0,1.0,1.0) * material.specular)*attenuation*shadow;
     }
 
     if(material.transparency > 0.0 && insideMaterial){

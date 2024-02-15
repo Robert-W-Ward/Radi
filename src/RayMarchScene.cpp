@@ -89,9 +89,6 @@ namespace Radi::Types
             light.intensity = obj["Intensity"].get<float>();
             this->lights.push_back(light);
         }
-        //TODO: Load lights
-        // this->shapes = shapes;
-        // this->lights = lights;
     }
     void RayMarchScene::Render(Radi::Types::Shader* shader){
         // Rendering for RayMarched scenes happens exclusively on the GPU
