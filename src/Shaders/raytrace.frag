@@ -104,7 +104,6 @@ float udTriangle( vec3 p, vec3 a, vec3 b, vec3 c )
 float sdPlane(vec3 p, vec3 n, float h){
     return dot(p,n) + h;
 }
-
 float SceneSDF(vec3 point,out Material hitMaterial){
     float closestDist = 1e9;
     float distance = 1e9;
@@ -158,61 +157,6 @@ float ShadowRay(vec3 origin,vec3 dir,float maxDist){
     return shadow;
 }
 
-vec4 CalculateLighting(vec3 point, Material material, vec3 normal,bool insideMaterial){
-    vec4 ambientColor = vec4(0.1,0.1,0.1,1.0);
-    vec4 diffuseColor = vec4(0.0);
-    vec4 specularColor = vec4(0.0);
-    vec4 transmittedColor = vec4(0.0);
-    float lightDist = 1.0;
-    for(int i = 0; i < lights.length();++i){
-        vec3 lightDir;
-        switch(lights[i].type){
-            case POINT_LIGHT:
-                lightDir = normalize(lights[i].position.xyz - point);
-                lightDist = length(lights[i].position.xyz-point);
-                break;
-            case AREA:
-                break;
-            case DIRECTIONAL:
-                lightDist = 10000.0;
-                lightDir = normalize(-lights[i].direction.xyz);
-                break;
-            default:
-                break;
-        }        
-        float shadow = ShadowRay(point,lightDir,lightDist);
-
-        float intensity = lights[i].intensity;
-        vec4 lightColor = lights[i].color * intensity;
-
-        float attenuation = 1.0;
-        if(lights[i].type == POINT_LIGHT) {
-            float constant = 1.0; // Constant attenuation factor
-            float linear = 0.09; // Linear attenuation factor
-            float quadratic = 0.032; // Quadratic attenuation factor
-            attenuation = 1.0 / (constant + linear * lightDist + quadratic * (lightDist * lightDist));
-        }
-
-
-
-        // Diffuse
-        float diffuse = max(dot(normal, lightDir),0.0);
-        diffuseColor += (diffuse * lightColor * material.color)*attenuation *shadow;
-
-        //Specular
-        vec3 specularReflectDir = reflect(-lightDir,normal);
-        float specular = pow(max(dot(camDir,specularReflectDir),0.0),material.shininess);
-        specularColor +=  (specular * vec4(1.0,1.0,1.0,1.0) * material.specular)*attenuation*shadow;
-    }
-
-    if(material.transparency > 0.0 && insideMaterial){
-        diffuseColor *= material.transparency;
-        specularColor *= material.transparency;
-        transmittedColor = material.color* material.transparency;
-    }
-
-    return ambientColor + diffuseColor + specularColor + transmittedColor;
-}
 
 
 
@@ -262,18 +206,7 @@ Hit MarchRay(
             hasHit = true;
             hitPoint = position;
             normal = CalculateNormal(hitPoint,0.001);
-            
-
-            if(hitMaterial.transparency>0.0){
-                origin = hitPoint + normal * 0.01;
-                totalDistance += 0.01;
-                hasHit = false;
-                continue;
-            }else{
-                // Calculate color, including effects of accumulatedColor for translucency
-                // Break if opaque or if exiting a translucent material
-                break;
-            }
+            break;
         }else{
             totalDistance += nearestDistance;
         }
@@ -284,71 +217,105 @@ Hit MarchRay(
         return Hit(vec3(0.0,0.0,0.0),backgroundMaterial(),origin + direction * MAX_TRAVEL_DIST,MAX_TRAVEL_DIST);
     }
 }
+vec4 CalculateLighting(vec3 point, Material material, vec3 normal,bool insideMaterial){
+    vec4 ambientColor = vec4(0.1,0.1,0.1,1.0);
+    vec4 diffuseColor = vec4(0.0);
+    vec4 specularColor = vec4(0.0);
 
-vec4 AccumulateTransparency(Hit h,vec3 rd,vec4 color){
-    vec3 ro = h.point + h.normal *0.001;
-    float accumulatedTransparency = 1.0;
-    vec4 accumulatedColor = color;
-    if(h.material.transparency > 0.0){
-        for(int i = 0; i< 3; ++i){
-            Hit cont = MarchRay(ro,rd,100,0.001,1000);
-            if(cont.distance < 100.0 && cont.material.transparency > 0.0){
-                vec4 behindColor = CalculateLighting(cont.point,cont.material,cont.normal,false);
-                accumulatedColor = mix(accumulatedColor, behindColor, accumulatedTransparency * (1.0 - cont.material.transparency));
-                accumulatedTransparency *= cont.material.transparency;
-                ro = cont.point + cont.normal * 0.001;
-            }else{
-                // accumulatedColor = mix(accumulatedColor,color,accumulatedTransparency);
+
+    float lightDist = 1.0;
+
+
+    for(int i = 0; i < lights.length();++i){
+        vec3 lightDir;
+        switch(lights[i].type){
+            case POINT_LIGHT:
+                lightDir = normalize(lights[i].position.xyz - point);
+                lightDist = length(lights[i].position.xyz-point);
                 break;
-            }
-            if (accumulatedTransparency < 0.01) break;
+            case AREA:
+                break;
+            case DIRECTIONAL:
+                lightDist = 10000.0;
+                lightDir = normalize(-lights[i].direction.xyz);
+                break;
+            default:
+                break;
+        }        
+        float shadow = ShadowRay(point,lightDir,lightDist);
 
+        float intensity = lights[i].intensity;
+        vec4 lightColor = lights[i].color * intensity;
+
+        float attenuation = 1.0;
+        if(lights[i].type == POINT_LIGHT) {
+            float constant = 1.0; // Constant attenuation factor
+            float linear = 0.09; // Linear attenuation factor
+            float quadratic = 0.032; // Quadratic attenuation factor
+            attenuation = 1.0 / (constant + linear * lightDist + quadratic * (lightDist * lightDist));
         }
-        return accumulatedColor + color * accumulatedTransparency;
+
+
+
+        // Diffuse
+        float diffuse = max(dot(normal, lightDir),0.0);
+        diffuseColor += (diffuse * lightColor * material.color)*attenuation *shadow;
+
+        //Specular
+        vec3 specularReflectDir = reflect(-lightDir,normal);
+        float specular = pow(max(dot(camDir,specularReflectDir),0.0),material.shininess);
+        specularColor +=  (specular * vec4(1.0,1.0,1.0,1.0) * material.specular)*attenuation*shadow;
     }
-}
 
-vec4 AccumulateReflections(Hit h, vec3 rd) {
-    if(h.material.reflectivity>0.0){
-        vec3 reflectDir = reflect(normalize(rd), h.normal);
-        vec3 reflectionOrigin = h.point + h.normal * 0.001;
-        Hit reflectHit = MarchRay(reflectionOrigin, reflectDir,100, 0.001, 1000);
 
-        if(reflectHit.distance < 100.0){
-            return CalculateLighting(h.point, h.material, h.normal, false);
-        }
+    if (material.transparency > 0.0 && insideMaterial) {
+        // Calculate refracted direction
+        vec3 incident = normalize(camPos - point);
+        vec3 refractedDir = refract(incident, normal, 1.0 / material.indexOfRefraction);
+
+        vec4 refractedColor = MarchRay(point,refractedDir,100,0.001,1000).material.color;
+        diffuseColor = mix(diffuseColor, refractedColor * material.color,  material.transparency);
     }
-}
 
+    return ambientColor + diffuseColor + specularColor;
+}
 
 void main() {
     //screen setup
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
 
+
+    ///TEMP
+
+    float absorb = 0.1;
+    float scatter = 0.2;
+    ///
+
     vec3 ro = camPos;
     vec3 rd = getRayDir(screenCoords);
     Hit h = MarchRay(ro,rd,100,0.001,1000);
-        
+    vec4 finalColor;
+    vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);//Background
     if(h.distance < 100.0){
-        vec4 color = CalculateLighting(h.point,h.material,h.normal,false);
-        vec4 reflectedColor = AccumulateReflections(h,rd);
-        vec4 finalColor = color;
+        finalColor = CalculateLighting(h.point,h.material,h.normal,false);
+        vec4 reflectColor;
 
-        if(h.material.reflectivity > 0.0){
-            finalColor = mix(finalColor,reflectedColor,h.material.reflectivity);
+        if(h.material.reflectivity>0.0){
+            vec3 reflectDir = reflect(normalize(rd), h.normal);
+            vec3 reflectionOrigin = h.point + h.normal * 0.001;
+            Hit reflectHit = MarchRay(reflectionOrigin, reflectDir,100, 0.001, 1000);
+
+            if(reflectHit.distance < 100.0){
+               reflectColor = CalculateLighting(reflectHit.point, reflectHit.material, reflectHit.normal, false);
+            }
+            finalColor = mix(finalColor,reflectColor,h.material.reflectivity);
         }
 
-        if(h.material.transparency >0.0){
-            vec4 transLucentColor = AccumulateTransparency(h,rd,finalColor);
-            finalColor = mix(finalColor,transLucentColor,h.material.transparency);
-        }
 
-        FragColor = finalColor;
-    }else{
-        FragColor = vec4(0.5,0.5,0.5,1.0);//Background
-    }
-    
+    FragColor = finalColor;
     if(isDebug)
         FragColor = vec4(h.normal,1.0);
-   
+    }else{
+        FragColor = BackgroundColor;
+    }
 }
