@@ -22,10 +22,10 @@
 #define AREA_LIGHT 998
 #define DIRECTIONAL_LIGHT 997
     const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
-    const int VIEWPORT_X = 800;
-    const int VIEWPORT_Y = 600;
-    const int WINDOW_X = 800;
-    const int WINDOW_Y = 600;
+    const int VIEWPORT_X = 1920;
+    const int VIEWPORT_Y = 1080;
+    const int WINDOW_X = 1920;
+    const int WINDOW_Y = 1080;
     const int aspectRatio = static_cast<float>(WINDOW_X)/ static_cast<float>(WINDOW_Y);
 
     void setupFullscreenQuad(unsigned int &VAO, unsigned int &VBO);
@@ -33,8 +33,8 @@
     bool isDebug = false;
     int main() {
         // Specify window dimensions and title
-        const int windowWidth = 800;
-        const int windowHeight = 600;
+        const int windowWidth = 1920;
+        const int windowHeight = 1080;
         const char* windowTitle = "Radi";
 
         // Create Window instance and context
@@ -50,7 +50,7 @@
         window.SetCamera(&camera);
 
         Radi::Types::RayMarchScene* RayMarchedScene = new Radi::Types::RayMarchScene();
-        RayMarchedScene->LoadSceneFromJson((PROJECT_ROOT + "\\Scene.json").c_str());
+        RayMarchedScene->LoadSceneFromJson((PROJECT_ROOT + "\\Scene2.json").c_str());
 
         unsigned int VAO, VBO;
         setupFullscreenQuad(VAO,VBO);

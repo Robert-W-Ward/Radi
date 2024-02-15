@@ -75,4 +75,12 @@ namespace Radi::Types{
 
         UpdateCameraVectors();
     }
+
+    void Camera::ProcessFOVChange(double xoffset,double yoffset){
+        Zoom += yoffset; 
+        if (Zoom < 1.0f)
+            Zoom = 1.0f;
+        if (Zoom > 45.0f)
+            Zoom = 45.0f; 
+    }
 }

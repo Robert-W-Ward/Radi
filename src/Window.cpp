@@ -29,6 +29,7 @@ namespace Radi::Types{
         glfwSetWindowUserPointer(glWindow, this); // Set user pointer to the Window instance
         glfwSetCursorPosCallback(glWindow, Window::CursorPosCallback); // Set the mouse callback
         glfwSetFramebufferSizeCallback(glWindow, Window::FramebufferSizeCallback);
+        glfwSetScrollCallback(glWindow,Window::ScrollCallback);
 
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
             std::cerr << "Failed to initialize GLAD\n";
@@ -58,12 +59,15 @@ namespace Radi::Types{
         ProcessCameraMovement(deltaTime);   
     }
 
+
+
     void Window::SetFramebufferSizeCallback(GLFWframebuffersizefun callback) {
         glfwSetFramebufferSizeCallback(glWindow, callback);
     }
     void Window::FramebufferSizeCallback(GLFWwindow* window, int width, int height) {   
         glViewport(0, 0, width, height);
     }
+
 
     void Window::SetMouseCursorPosCallback(GLFWcursorposfun callback){
         glfwSetCursorPosCallback(glWindow, callback);
@@ -76,14 +80,21 @@ namespace Radi::Types{
         }
     }
     
-    GLFWwindow* Window::GetGLFWWindow(){
-        return this->glWindow;
+    void Window::SetScrollCallBack(GLFWscrollfun callback){
+        glfwSetScrollCallback(glWindow,callback);
     }
+    void Window::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset){
+        
+        Window* windowInstance = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        if(windowInstance){
+            windowInstance->ProcessScrollWheel(xoffset,yoffset);
+        }
+    }
+    
 
     void Window::ProcessCameraMovement(float deltaTime) {
         if (!camera) return; // Ensure there's a camera
 
-        // Example movement processing
         if (glfwGetKey(glWindow, GLFW_KEY_W) == GLFW_PRESS)
             camera->ProcessKeyboard(GLFW_KEY_W, deltaTime);
         if (glfwGetKey(glWindow,GLFW_KEY_A) == GLFW_PRESS)
@@ -112,5 +123,16 @@ namespace Radi::Types{
         if (camera) {
             camera->ProcessMouseMovement(xoffset, yoffset,GL_TRUE);
         }
+    }
+    void Window::ProcessScrollWheel(double xoffset,double yoffset){
+        if (glfwGetKey(glWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || 
+            glfwGetKey(glWindow, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS) {
+            camera->ProcessFOVChange(xoffset,yoffset);
+        }
+    }
+    
+    
+    GLFWwindow* Window::GetGLFWWindow(){
+        return this->glWindow;
     }
 }

@@ -1,0 +1,42 @@
+{
+   "Objects":[
+    {
+        "Type":0,
+        "Position": {"x": 0.0, "y": -150.0, "z": 0.0, "w": 0.0},
+        "Dimensions": {"x":100,"y":0.0,"z":0.0,"w":0.0},
+        "Extra": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0},
+        "Material": {
+            "Color": {"r": 0.0, "g": 1.0, "b": 1.0, "a": 1.0},
+            "Specular": 0.5,
+            "Shininess": 32.0,
+            "Reflectivity": 0.0,
+            "Transparency":0.0,
+            "IOR":1.0
+        }
+    },
+    {
+        "Type":1,
+        "Position": {"x": 0.0, "y": -3.0, "z": 0.0, "w": 0.0},
+        "Dimensions": {"x":10,"y":0.5,"z":10.0,"w":0.0},
+        "Extra": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0},
+        "Material": {
+            "Color": {"r": 0.0, "g": 1.0, "b": 0.0, "a": 1.0},
+            "Specular": 0.5,
+            "Shininess": 32.0,
+            "Reflectivity": 0.3,
+            "Transparency":0.0,
+            "IOR":1.0
+        }
+    }
+   ] ,
+   "Lights":[
+    {
+        "Type":999,
+        "Position":{"x":0,"y":5.0,"z":0,"w":0},
+        "Direction":{"x":0,"y":0.0,"z":0,"w":0},
+        "Color":{"r":1.0,"g":0.0,"b":1.0,"a":1.0},
+        "Intensity":1.0
+
+    }
+   ]
+}

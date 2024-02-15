@@ -25,6 +25,7 @@ namespace Radi::Types {
 
             void ProcessKeyboard(int direction, float deltaTime);
             void ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch);
+            void ProcessFOVChange(double xoffset,double yoffset);
             void UpdateCameraVectors();
     };
 

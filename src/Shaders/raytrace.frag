@@ -211,7 +211,8 @@ Hit MarchRay(
     vec3 normal;
     vec3 hitPoint;
     Material hitMaterial;
-    for(float i = 0;i< numberOfSteps&&totalDistance<MAX_TRAVEL_DIST; ++i){
+
+    for(float i = 0;i< numberOfSteps && totalDistance<MAX_TRAVEL_DIST; i+=.5){
         //RAY MARCH!
         vec3 position = origin + (totalDistance) * direction;
         //Calculate distance from nearest object in the scene
@@ -248,13 +249,13 @@ Hit MarchRay(
 void main() {
     //screen setup
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
-    Hit h = MarchRay(camPos,getRayDir(screenCoords),100,0.001,1000);
+    Hit h = MarchRay(camPos,getRayDir(screenCoords),500,0.0001,1000);
     if(h.distance < 100.0){
         vec4 color = CalculateLighting(h.point,h.material,h.normal,false);
         if(h.material.reflectivity>0.0){
             vec3 reflectDir = reflect(normalize(getRayDir(screenCoords)), h.normal);
             vec3 reflectionOrigin = h.point + h.normal * 0.001;
-            Hit reflectedHit = MarchRay(reflectionOrigin, reflectDir, 100, 0.001, 100);
+            Hit reflectedHit = MarchRay(reflectionOrigin, reflectDir,500, 0.0001, 100);
 
             if(reflectedHit.distance<100.0){
                 vec4 reflectedColor = CalculateLighting(reflectedHit.point,reflectedHit.material,reflectedHit.normal,false);
