@@ -6,7 +6,7 @@
         "PLANE":3
     },
     "LightTypes":{
-        "SPOT":999,
+        "POINT":999,
         "DIRECTIONAL":997
     },
     "Objects": [

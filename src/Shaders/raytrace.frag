@@ -7,7 +7,7 @@ const int MAX_SHAPES = 50;
 #define PLANE 3
 
 
-#define SPOT_LIGHT 999
+#define POINT_LIGHT 999
 #define AREA 998
 #define DIRECTIONAL 997
 
@@ -105,52 +105,6 @@ float sdPlane(vec3 p, vec3 n, float h){
     return dot(p,n) + h;
 }
 
-Material defaultMaterial(){
-    return Material(vec4(0.75),.5,32.0,0.0,0.0,0.0);
-}
-Material backgroundMaterial(){
-    return Material(vec4(0.0),1.0,1.0,0.0,0.0,0.0);
-}
-
-vec4 CalculateLighting(vec3 point, Material material, vec3 normal,bool insideMaterial){
-    vec4 ambientColor = vec4(0.1,0.1,0.1,1.0);
-    vec4 diffuseColor = vec4(0.0);
-    vec4 specularColor = vec4(0.0);
-    vec4 transmittedColor = vec4(0.0);
-    for(int i = 0; i < lights.length();++i){
-        vec3 lightDir;
-        switch(lights[i].type){
-            case SPOT_LIGHT:
-                lightDir = normalize(lights[i].position.xyz - point);
-                break;
-            case AREA:
-                break;
-            case DIRECTIONAL:
-                lightDir = normalize(-lights[i].direction.xyz);
-                break;
-            default:
-                break;
-        }        
-        float intensity = lights[i].intensity;
-        vec4 lightColor = lights[i].color * intensity;
-        // Diffuse
-        float diffuse = max(dot(normal, lightDir),0.0);
-        diffuseColor = diffuse * lightColor * material.color ;
-
-        //Specular
-        vec3 specularReflectDir = reflect(-lightDir,normal);
-        float specular = pow(max(dot(camDir,specularReflectDir),0.0),material.shininess);
-        specularColor = specular * vec4(1.0,1.0,1.0,1.0) * material.specular;
-    }
-
-    if(material.transparency > 0.0 && insideMaterial){
-        diffuseColor *= material.transparency;
-        specularColor *= material.transparency;
-        transmittedColor = material.color* material.transparency;
-    }
-
-    return ambientColor + diffuseColor + specularColor + transmittedColor;
-}
 float SceneSDF(vec3 point,out Material hitMaterial){
     float closestDist = 1e9;
     float distance = 1e9;
@@ -178,6 +132,91 @@ float SceneSDF(vec3 point,out Material hitMaterial){
     }
     return closestDist;
 }
+
+Material defaultMaterial(){
+    return Material(vec4(0.75),.5,32.0,0.0,0.0,0.0);
+}
+Material backgroundMaterial(){
+    return Material(vec4(0.0),1.0,1.0,0.0,0.0,0.0);
+}
+
+
+float ShadowRay(vec3 origin,vec3 dir,float maxDist){
+    float shadow = 1.0;
+    float t = 0.01;
+    Material mat;
+    for(int i = 0;i<16;++i){
+        vec3 pos = origin + dir * t;
+        float h = SceneSDF(pos,mat);
+        if(h<0.001){
+            shadow = 0.0;
+            break;
+        }
+        t+=h;
+        if(t>=maxDist)break;
+    }
+    return shadow;
+}
+
+vec4 CalculateLighting(vec3 point, Material material, vec3 normal,bool insideMaterial){
+    vec4 ambientColor = vec4(0.1,0.1,0.1,1.0);
+    vec4 diffuseColor = vec4(0.0);
+    vec4 specularColor = vec4(0.0);
+    vec4 transmittedColor = vec4(0.0);
+    float lightDist = 1.0;
+    for(int i = 0; i < lights.length();++i){
+        vec3 lightDir;
+        switch(lights[i].type){
+            case POINT_LIGHT:
+                lightDir = normalize(lights[i].position.xyz - point);
+                lightDist = length(lights[i].position.xyz-point);
+                break;
+            case AREA:
+                break;
+            case DIRECTIONAL:
+                lightDir = normalize(-lights[i].direction.xyz);
+                break;
+            default:
+                break;
+        }        
+        float shadow = ShadowRay(point,lightDir,lightDist);
+
+        float intensity = lights[i].intensity;
+        vec4 lightColor = lights[i].color * intensity;
+
+        float attenuation = 1.0;
+        if(lights[i].type == POINT_LIGHT) {
+            float constant = 1.0; // Constant attenuation factor
+            float linear = 0.09; // Linear attenuation factor
+            float quadratic = 0.032; // Quadratic attenuation factor
+            attenuation = 1.0 / (constant + linear * lightDist + quadratic * (lightDist * lightDist));
+        }
+
+
+
+        // Diffuse
+        float diffuse = max(dot(normal, lightDir),0.0);
+        diffuseColor = shadow * diffuse * lightColor * material.color ;
+
+        //Specular
+        vec3 specularReflectDir = reflect(-lightDir,normal);
+        float specular = pow(max(dot(camDir,specularReflectDir),0.0),material.shininess);
+        specularColor = shadow * specular * vec4(1.0,1.0,1.0,1.0) * material.specular;
+    }
+
+    if(material.transparency > 0.0 && insideMaterial){
+        diffuseColor *= material.transparency;
+        specularColor *= material.transparency;
+        transmittedColor = material.color* material.transparency;
+    }
+
+    return ambientColor + diffuseColor + specularColor + transmittedColor;
+}
+
+
+
+
+
 
 vec3 CalculateNormal(vec3 p, float epsilon) {
     const vec3 dx = vec3(epsilon, 0.0, 0.0);

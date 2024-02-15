@@ -18,7 +18,7 @@
 #define TRIANGLE 2
 #define PLANE 3
 
-#define SPOT_LIGHT 999
+#define POINT_LIGHT 999
 #define AREA_LIGHT 998
 #define DIRECTIONAL_LIGHT 997
     const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
