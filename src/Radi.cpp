@@ -46,7 +46,7 @@
             return -1;
         }
         Radi::Types::Camera camera;
-        Radi::Types::Shader shader((PROJECT_ROOT + "\\Shaders\\raytrace.vert").c_str(),(PROJECT_ROOT + "\\shaders\\raytrace.frag").c_str());
+        Radi::Types::Shader shader((PROJECT_ROOT + "\\Shaders\\raymarch.vert").c_str(),(PROJECT_ROOT + "\\shaders\\raymarch.frag").c_str());
         window.SetCamera(&camera);
 
         Radi::Types::RayMarchScene* RayMarchedScene = new Radi::Types::RayMarchScene();
