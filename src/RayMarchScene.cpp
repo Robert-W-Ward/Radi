@@ -61,6 +61,7 @@ namespace Radi::Types
             shape.material.specular = obj["Material"]["Specular"].get<float>();
             shape.material.shininess = obj["Material"]["Shininess"].get<float>();
             shape.material.reflectivity = obj["Material"]["Reflectivity"].get<float>();
+            shape.material.ior = obj["Material"]["IOR"].get<float>();
             this->shapes.push_back(shape);
         }
         for(const auto& obj: jsonData["Lights"]){

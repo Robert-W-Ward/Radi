@@ -8,6 +8,7 @@ namespace Radi::Types
         float specular;
         float shininess;
         float reflectivity;
+        float ior;
     };
 
 } 

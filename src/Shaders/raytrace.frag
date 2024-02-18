@@ -19,6 +19,7 @@ struct Material{
     float specular;
     float shininess;
     float reflectivity;
+    float ior;
 };
 
 struct Shape3D{
@@ -71,6 +72,14 @@ vec3 getRayDir(vec2 screenCoords){
     screenPos.x *= aspectRatio;
     return normalize(camRight*screenPos.x + camUp * screenPos.y + camDir);
 }
+
+float fresnel(vec3 viewDir, vec3 normal, float ior) {
+    float f0 = pow((1.0 - ior) / (1.0 + ior), 2.0);
+    float cosTheta = clamp(dot(viewDir, normal), 0.0, 1.0);
+    return f0 + (1.0 - f0) * pow(1.0 - cosTheta, 5.0);
+}
+
+
 
 float sphereSDF(vec3 rayPos, vec3 sphereCenter, float sphereRadius) {
     return length(rayPos - sphereCenter) - sphereRadius;
@@ -132,10 +141,10 @@ float SceneSDF(vec3 point,out Material hitMaterial){
 }
 
 Material defaultMaterial(){
-    return Material(vec4(0.75),.5,32.0,0.0);
+    return Material(vec4(0.75),.5,32.0,0.0,1.0);
 }
 Material backgroundMaterial(){
-    return Material(vec4(0.0),1.0,1.0,0.0);
+    return Material(vec4(0.0),1.0,1.0,0.0,1.0);
 }
 
 
@@ -219,39 +228,87 @@ vec4 CalculateLighting(Hit hit){
 
     return ambientColor + diffuseColor + specularColor;
 }
+
+Hit RayMarch(vec3 origin, vec3 direction, int numberOfSteps, float MIN_HIT_DISTANCE,float MAX_TRAVEL_DIST){
+    float totalDistance = 0.0;
+    float distToSurface = 1e9;
+    Material hitMaterial;
+
+    for(int i = 0; i< numberOfSteps && totalDistance <MAX_TRAVEL_DIST; ++i){
+        vec3 position = origin + totalDistance * direction;
+        distToSurface = SceneSDF(position,hitMaterial);
+
+        if(distToSurface < MIN_HIT_DISTANCE){
+            vec3 normal = CalculateNormal(position,0.001);
+            vec4 PhongLighting = CalculateLighting(Hit(normal,hitMaterial,position,totalDistance,vec4(0.0)));
+            return Hit(normal,hitMaterial,position,totalDistance,vec4(0.0));
+        }
+        totalDistance+=distToSurface;
+    }
+    return Hit(vec3(0.0,0.0,0.0),backgroundMaterial(),origin + direction * MAX_TRAVEL_DIST,MAX_TRAVEL_DIST,vec4(0.0));
+}
+
+
+
 Hit MarchRay(vec3 origin, vec3 direction, int numberOfSteps, float MIN_HIT_DISTANCE,float MAX_TRAVEL_DIST){
+
     float totalDistance = 0.0;
     float distToSurface = 1e9;
     bool hasHit = false;
     vec3 normal;
     vec3 hitPoint;
-    Material hitMaterial;
-    vec4 accumulatedColor = vec4(0.0); // Start with no color.
-    float accumulatedAlpha = 1.0; // Full visibility initially.
 
+    Material hitMaterial;
+    vec4 accumulatedColor = vec4(0.0);
+    float accumulatedAlpha = 1.0; 
+    bool outside = true;
+    vec4 reflectColor = BackgroundColor;
+    vec4 refractColor = BackgroundColor;
     for(float i = 0;i< numberOfSteps && totalDistance<MAX_TRAVEL_DIST; ++i){
         //RAY MARCH!
         vec3 position = origin + (totalDistance) * direction;
         distToSurface = SceneSDF(position,hitMaterial);
 
-
         if(distToSurface < MIN_HIT_DISTANCE){
-           
             vec3 normal = CalculateNormal(position,0.001);
-            Hit hit = Hit(normal,hitMaterial,position,totalDistance,vec4(0.0));
-            //THIS SORT OF WORKS
+            vec4 PhongLighting = CalculateLighting(Hit(normal, hitMaterial, position, totalDistance, vec4(0.0)));
+            float fresnelEffect = fresnel(-normalize(direction),normal,hitMaterial.ior);
             
-            vec4 PhongLighting = CalculateLighting(hit);
             PhongLighting.a *= accumulatedAlpha;
+            accumulatedColor += PhongLighting * PhongLighting.a;
+            accumulatedAlpha *= (1.0 - hitMaterial.color.a);
 
-            accumulatedColor = PhongLighting * PhongLighting.a + accumulatedColor * (1 - PhongLighting.a);
-
-            accumulatedAlpha *= (1.0 - hit.material.color.a);
-            if(hit.material.color.a>=1.0 || accumulatedAlpha <=0.01){
-                hit.accumulatedColor = accumulatedColor;
-                return hit;
+            // Handle refraction if material has IOR different from 1 and not fully opaque
+            if(hitMaterial.ior != 1.0 && hitMaterial.color.a < 1.0) {
+                float ior = outside ? hitMaterial.ior : (1/hitMaterial.ior);
+                vec3 refractDir = refract(normalize(direction), normal * (outside ? 1.0 : -1.0), ior);
+                if(length(refractDir)>0){
+                    vec3 refractOrigin = position + normal * 0.001;
+                    Hit refractHit = RayMarch(refractOrigin, refractDir,numberOfSteps,MIN_HIT_DISTANCE,MAX_TRAVEL_DIST);
+                    if(refractHit.distance<100.0){
+                        refractColor = CalculateLighting(refractHit);
+                    }
+                }else{
+                    // Total interal reflection
+                }
             }
 
+            if(hitMaterial.reflectivity>0.0){
+                vec3 reflectDir = reflect(normalize(direction), normal);    
+                vec3 reflectOrigin = position + normal * 0.001;
+                Hit reflecHit = RayMarch(reflectOrigin,reflectDir,numberOfSteps,MIN_HIT_DISTANCE,MAX_TRAVEL_DIST);
+                if(reflecHit.distance<100.0){
+                    reflectColor = CalculateLighting(reflecHit);
+                }
+            }
+            
+            accumulatedColor = mix(accumulatedColor,reflectColor,hitMaterial.reflectivity);
+            accumulatedColor = mix(accumulatedColor,refractColor,1.0-hitMaterial.color.a);
+
+            // Return once hit an Opque object or materials alpha gets to small
+            if(hitMaterial.color.a>=1.0 || accumulatedAlpha <=0.01){
+                return Hit(normal, hitMaterial,position, totalDistance,accumulatedColor);
+            }
             origin = position + direction * MIN_HIT_DISTANCE;
         }
         totalDistance += distToSurface;
@@ -268,30 +325,12 @@ void main() {
     vec3 rd = getRayDir(screenCoords);
 
     Hit h = MarchRay(ro,rd,100,0.001,1000);
-
-    vec4 finalColor;
-
-
     if(h.distance < 100.0){
-        
-        //Handle reflections
-        vec4 reflectColor;
-        if(h.material.reflectivity>0.0){
-            vec3 reflectDir = reflect(normalize(rd), h.normal);
-            vec3 reflectionOrigin = h.point + h.normal ;
-            Hit reflectHit = MarchRay(reflectionOrigin, reflectDir,100, 0.001, 1000);
-
-            if(reflectHit.distance < 100.0){
-               reflectColor = CalculateLighting(reflectHit);
-            }
-            finalColor = mix(finalColor,reflectColor,h.material.reflectivity);
-        }
-
-
-    FragColor = h.accumulatedColor;
-    if(isDebug)
-        FragColor = vec4(h.normal,1.0);
+        FragColor = h.accumulatedColor;
+        if(isDebug)
+            FragColor = vec4(h.normal,1.0);
     }else{
+
         FragColor = BackgroundColor;
-    }
+    }    
 }
