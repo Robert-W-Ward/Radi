@@ -13,14 +13,12 @@ const int MAX_SHAPES = 50;
 
 out vec4 FragColor;
 const int MAX_REFLECTION_DEPTH = 3;
-
+vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
 struct Material{
     vec4 color;
     float specular;
     float shininess;
     float reflectivity;
-    float transparency;
-    float indexOfRefraction;
 };
 
 struct Shape3D{
@@ -133,10 +131,10 @@ float SceneSDF(vec3 point,out Material hitMaterial){
 }
 
 Material defaultMaterial(){
-    return Material(vec4(0.75),.5,32.0,0.0,0.0,0.0);
+    return Material(vec4(0.75),.5,32.0,0.0);
 }
 Material backgroundMaterial(){
-    return Material(vec4(0.0),1.0,1.0,0.0,0.0,0.0);
+    return Material(vec4(0.0),1.0,1.0,0.0);
 }
 
 
@@ -158,11 +156,6 @@ float ShadowRay(vec3 origin,vec3 dir,float maxDist){
 }
 
 
-
-
-
-
-
 vec3 CalculateNormal(vec3 p, float epsilon) {
     const vec3 dx = vec3(epsilon, 0.0, 0.0);
     const vec3 dy = vec3(0.0, epsilon, 0.0);
@@ -178,18 +171,9 @@ vec3 CalculateNormal(vec3 p, float epsilon) {
     return normalize(n);
 }
 
-Hit MarchRay(
-    vec3 origin, 
-    vec3 direction, 
-    int numberOfSteps, 
-    float MIN_HIT_DISTANCE,
-    float MAX_TRAVEL_DIST)
-    {
-
-    vec3 ro = origin;
-    vec3 rd = direction;
+Hit MarchRay(vec3 origin, vec3 direction, int numberOfSteps, float MIN_HIT_DISTANCE,float MAX_TRAVEL_DIST){
     float totalDistance = 0.0;
-    float nearestDistance = 1e9;
+    float distToSurface = 1e9;
     bool hasHit = false;
     vec3 normal;
     vec3 hitPoint;
@@ -199,39 +183,29 @@ Hit MarchRay(
         //RAY MARCH!
         vec3 position = origin + (totalDistance) * direction;
         //Calculate distance from nearest object in the scene
-        nearestDistance = SceneSDF(position,hitMaterial);
-        
+        distToSurface = SceneSDF(position,hitMaterial);
         //If the nearest object is close enough to be considered "hit" return
-        if(nearestDistance < MIN_HIT_DISTANCE){
-            hasHit = true;
-            hitPoint = position;
-            normal = CalculateNormal(hitPoint,0.001);
-            break;
+        if(distToSurface < MIN_HIT_DISTANCE){            
+            return Hit(CalculateNormal(position,0.001),hitMaterial,position,totalDistance);
         }else{
-            totalDistance += nearestDistance;
+            totalDistance += distToSurface;
         }
     }
-    if(hasHit){
-        return Hit(normal,hitMaterial,hitPoint,totalDistance);
-    }else{
-        return Hit(vec3(0.0,0.0,0.0),backgroundMaterial(),origin + direction * MAX_TRAVEL_DIST,MAX_TRAVEL_DIST);
-    }
+    return Hit(vec3(0.0,0.0,0.0),backgroundMaterial(),origin + direction * MAX_TRAVEL_DIST,MAX_TRAVEL_DIST);
 }
-vec4 CalculateLighting(vec3 point, Material material, vec3 normal,bool insideMaterial){
+vec4 CalculateLighting(Hit hit){
     vec4 ambientColor = vec4(0.1,0.1,0.1,1.0);
     vec4 diffuseColor = vec4(0.0);
     vec4 specularColor = vec4(0.0);
-
-
+    
     float lightDist = 1.0;
-
 
     for(int i = 0; i < lights.length();++i){
         vec3 lightDir;
         switch(lights[i].type){
             case POINT_LIGHT:
-                lightDir = normalize(lights[i].position.xyz - point);
-                lightDist = length(lights[i].position.xyz-point);
+                lightDir = normalize(lights[i].position.xyz - hit.point);
+                lightDist = length(lights[i].position.xyz - hit.point);
                 break;
             case AREA:
                 break;
@@ -242,7 +216,7 @@ vec4 CalculateLighting(vec3 point, Material material, vec3 normal,bool insideMat
             default:
                 break;
         }        
-        float shadow = ShadowRay(point,lightDir,lightDist);
+        float shadow = ShadowRay(hit.point,lightDir,lightDist);
 
         float intensity = lights[i].intensity;
         vec4 lightColor = lights[i].color * intensity;
@@ -258,23 +232,13 @@ vec4 CalculateLighting(vec3 point, Material material, vec3 normal,bool insideMat
 
 
         // Diffuse
-        float diffuse = max(dot(normal, lightDir),0.0);
-        diffuseColor += (diffuse * lightColor * material.color)*attenuation *shadow;
+        float diffuse = max(dot(hit.normal, lightDir),0.0);
+        diffuseColor += (diffuse * lightColor * hit.material.color)*attenuation *shadow;
 
         //Specular
-        vec3 specularReflectDir = reflect(-lightDir,normal);
-        float specular = pow(max(dot(camDir,specularReflectDir),0.0),material.shininess);
-        specularColor +=  (specular * vec4(1.0,1.0,1.0,1.0) * material.specular)*attenuation*shadow;
-    }
-
-
-    if (material.transparency > 0.0 && insideMaterial) {
-        // Calculate refracted direction
-        vec3 incident = normalize(camPos - point);
-        vec3 refractedDir = refract(incident, normal, 1.0 / material.indexOfRefraction);
-
-        vec4 refractedColor = MarchRay(point,refractedDir,100,0.001,1000).material.color;
-        diffuseColor = mix(diffuseColor, refractedColor * material.color,  material.transparency);
+        vec3 specularReflectDir = reflect(-lightDir,hit.normal);
+        float specular = pow(max(dot(camDir,specularReflectDir),0.0),hit.material.shininess);
+        specularColor +=  (specular * vec4(1.0,1.0,1.0,1.0) * hit.material.specular)*attenuation*shadow;
     }
 
     return ambientColor + diffuseColor + specularColor;
@@ -284,29 +248,26 @@ void main() {
     //screen setup
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
 
-
-    ///TEMP
-
-    float absorb = 0.1;
-    float scatter = 0.2;
-    ///
-
     vec3 ro = camPos;
     vec3 rd = getRayDir(screenCoords);
-    Hit h = MarchRay(ro,rd,100,0.001,1000);
-    vec4 finalColor;
-    vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);//Background
-    if(h.distance < 100.0){
-        finalColor = CalculateLighting(h.point,h.material,h.normal,false);
-        vec4 reflectColor;
 
+    Hit h = MarchRay(ro,rd,100,0.001,1000);
+
+    vec4 finalColor;
+
+
+    if(h.distance < 100.0){
+        finalColor = CalculateLighting(h);
+        
+        // Handle reflections
+        vec4 reflectColor;
         if(h.material.reflectivity>0.0){
             vec3 reflectDir = reflect(normalize(rd), h.normal);
             vec3 reflectionOrigin = h.point + h.normal * 0.001;
             Hit reflectHit = MarchRay(reflectionOrigin, reflectDir,100, 0.001, 1000);
 
             if(reflectHit.distance < 100.0){
-               reflectColor = CalculateLighting(reflectHit.point, reflectHit.material, reflectHit.normal, false);
+               reflectColor = CalculateLighting(reflectHit);
             }
             finalColor = mix(finalColor,reflectColor,h.material.reflectivity);
         }

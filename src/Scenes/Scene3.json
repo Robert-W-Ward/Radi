@@ -9,9 +9,7 @@
              "Color": {"r": 0.8, "g": 0.0, "b": 0.0, "a": 1.0},
              "Specular": 1.0,
              "Shininess": 32.0,
-             "Reflectivity": 0.0,
-             "Transparency":0.0,
-             "IOR":0.5
+             "Reflectivity": 0.0
          }
      },
      {
@@ -23,9 +21,7 @@
             "Color": {"r": 0.0, "g": 1.0, "b": 0.0, "a": 1.0},
             "Specular": 16.0,
             "Shininess": 32.0,
-            "Reflectivity": 0.5,
-            "Transparency":0.0,
-            "IOR":0.5
+            "Reflectivity": 0.5
         }
     },
     {
@@ -37,9 +33,7 @@
             "Color": {"r": 1.0, "g": 0.0, "b": 0.8, "a": 1.0},
             "Specular": 1.0,
             "Shininess": 32.0,
-            "Reflectivity": 0.0,
-            "Transparency":1.0,
-            "IOR":1.5
+            "Reflectivity": 0.0
         }
     },
     {
@@ -51,9 +45,7 @@
             "Color": {"r": 1.0, "g": 1.0, "b": 1.0, "a": 0.0},
             "Specular": 1.0,
             "Shininess": 32.0,
-            "Reflectivity": 0.0,
-            "Transparency":0.0,
-            "IOR":0.3
+            "Reflectivity": 0.0
         }
     }
 
