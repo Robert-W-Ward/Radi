@@ -34,6 +34,7 @@ struct Hit{
     Material material;
     vec3 point;
     float distance;
+    vec4 color;
 };
 
 struct Light{
@@ -170,29 +171,6 @@ vec3 CalculateNormal(vec3 p, float epsilon) {
 
     return normalize(n);
 }
-
-Hit MarchRay(vec3 origin, vec3 direction, int numberOfSteps, float MIN_HIT_DISTANCE,float MAX_TRAVEL_DIST){
-    float totalDistance = 0.0;
-    float distToSurface = 1e9;
-    bool hasHit = false;
-    vec3 normal;
-    vec3 hitPoint;
-    Material hitMaterial;
-
-    for(float i = 0;i< numberOfSteps && totalDistance<MAX_TRAVEL_DIST; i+=.5){
-        //RAY MARCH!
-        vec3 position = origin + (totalDistance) * direction;
-        //Calculate distance from nearest object in the scene
-        distToSurface = SceneSDF(position,hitMaterial);
-        //If the nearest object is close enough to be considered "hit" return
-        if(distToSurface < MIN_HIT_DISTANCE){            
-            return Hit(CalculateNormal(position,0.001),hitMaterial,position,totalDistance);
-        }else{
-            totalDistance += distToSurface;
-        }
-    }
-    return Hit(vec3(0.0,0.0,0.0),backgroundMaterial(),origin + direction * MAX_TRAVEL_DIST,MAX_TRAVEL_DIST);
-}
 vec4 CalculateLighting(Hit hit){
     vec4 ambientColor = vec4(0.1,0.1,0.1,1.0);
     vec4 diffuseColor = vec4(0.0);
@@ -229,8 +207,6 @@ vec4 CalculateLighting(Hit hit){
             attenuation = 1.0 / (constant + linear * lightDist + quadratic * (lightDist * lightDist));
         }
 
-
-
         // Diffuse
         float diffuse = max(dot(hit.normal, lightDir),0.0);
         diffuseColor += (diffuse * lightColor * hit.material.color)*attenuation *shadow;
@@ -243,6 +219,42 @@ vec4 CalculateLighting(Hit hit){
 
     return ambientColor + diffuseColor + specularColor;
 }
+Hit MarchRay(vec3 origin, vec3 direction, int numberOfSteps, float MIN_HIT_DISTANCE,float MAX_TRAVEL_DIST){
+    float totalDistance = 0.0;
+    float distToSurface = 1e9;
+    bool hasHit = false;
+    vec3 normal;
+    vec3 hitPoint;
+    Material hitMaterial;
+    vec4 accumulatedColor = BackgroundColor;
+    for(float i = 0;i< numberOfSteps && totalDistance<MAX_TRAVEL_DIST; ++i){
+        //RAY MARCH!
+        vec3 position = origin + (totalDistance) * direction;
+        distToSurface = SceneSDF(position,hitMaterial);
+
+
+        if(distToSurface < MIN_HIT_DISTANCE){
+           
+            //THIS SORT OF WORKS
+            vec3 normal = CalculateNormal(position,0.001);
+            
+            Hit hit = Hit(normal,hitMaterial,position,totalDistance,accumulatedColor);
+
+            vec4 PhonLighting = CalculateLighting(hit);
+
+            hit.color = mix(accumulatedColor, PhonLighting + accumulatedColor * (1.0 - PhonLighting.a), PhonLighting.a);
+
+            if(hit.material.color.a>=1.0){
+                return hit;
+            }
+
+            origin = position + direction * MIN_HIT_DISTANCE;
+        }
+        totalDistance += distToSurface;
+    }
+    return Hit(vec3(0.0,0.0,0.0),backgroundMaterial(),origin + direction * MAX_TRAVEL_DIST,MAX_TRAVEL_DIST,accumulatedColor);
+}
+
 
 void main() {
     //screen setup
@@ -257,13 +269,13 @@ void main() {
 
 
     if(h.distance < 100.0){
-        finalColor = CalculateLighting(h);
+        finalColor = h.color;
         
-        // Handle reflections
+        //Handle reflections
         vec4 reflectColor;
         if(h.material.reflectivity>0.0){
             vec3 reflectDir = reflect(normalize(rd), h.normal);
-            vec3 reflectionOrigin = h.point + h.normal * 0.001;
+            vec3 reflectionOrigin = h.point + h.normal ;
             Hit reflectHit = MarchRay(reflectionOrigin, reflectDir,100, 0.001, 1000);
 
             if(reflectHit.distance < 100.0){
