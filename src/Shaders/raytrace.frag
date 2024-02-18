@@ -34,7 +34,7 @@ struct Hit{
     Material material;
     vec3 point;
     float distance;
-    vec4 color;
+    vec4 accumulatedColor;
 };
 
 struct Light{
@@ -226,7 +226,9 @@ Hit MarchRay(vec3 origin, vec3 direction, int numberOfSteps, float MIN_HIT_DISTA
     vec3 normal;
     vec3 hitPoint;
     Material hitMaterial;
-    vec4 accumulatedColor = BackgroundColor;
+    vec4 accumulatedColor = vec4(0.0); // Start with no color.
+    float accumulatedAlpha = 1.0; // Full visibility initially.
+
     for(float i = 0;i< numberOfSteps && totalDistance<MAX_TRAVEL_DIST; ++i){
         //RAY MARCH!
         vec3 position = origin + (totalDistance) * direction;
@@ -235,16 +237,18 @@ Hit MarchRay(vec3 origin, vec3 direction, int numberOfSteps, float MIN_HIT_DISTA
 
         if(distToSurface < MIN_HIT_DISTANCE){
            
-            //THIS SORT OF WORKS
             vec3 normal = CalculateNormal(position,0.001);
+            Hit hit = Hit(normal,hitMaterial,position,totalDistance,vec4(0.0));
+            //THIS SORT OF WORKS
             
-            Hit hit = Hit(normal,hitMaterial,position,totalDistance,accumulatedColor);
+            vec4 PhongLighting = CalculateLighting(hit);
+            PhongLighting.a *= accumulatedAlpha;
 
-            vec4 PhonLighting = CalculateLighting(hit);
+            accumulatedColor = PhongLighting * PhongLighting.a + accumulatedColor * (1 - PhongLighting.a);
 
-            hit.color = mix(accumulatedColor, PhonLighting + accumulatedColor * (1.0 - PhonLighting.a), PhonLighting.a);
-
-            if(hit.material.color.a>=1.0){
+            accumulatedAlpha *= (1.0 - hit.material.color.a);
+            if(hit.material.color.a>=1.0 || accumulatedAlpha <=0.01){
+                hit.accumulatedColor = accumulatedColor;
                 return hit;
             }
 
@@ -269,7 +273,6 @@ void main() {
 
 
     if(h.distance < 100.0){
-        finalColor = h.color;
         
         //Handle reflections
         vec4 reflectColor;
@@ -285,7 +288,7 @@ void main() {
         }
 
 
-    FragColor = finalColor;
+    FragColor = h.accumulatedColor;
     if(isDebug)
         FragColor = vec4(h.normal,1.0);
     }else{
