@@ -124,7 +124,7 @@ float SceneSDF(vec3 point,out Material hitMaterial){
                 distance = udTriangle(point,shapes[i].position.xyz,shapes[i].dimensions.xyz,shapes[i].extra.xyz);
                 break;
             case PLANE:
-                distance = sdPlane(point,normalize(shapes[i].dimensions.xyz),shapes[i].dimensions.y);
+                distance = sdPlane(point,normalize(shapes[i].position.xyz),shapes[i].dimensions.x);
                 break;
             default:
                 break;
