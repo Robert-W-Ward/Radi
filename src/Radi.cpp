@@ -78,6 +78,7 @@
         glBindBuffer(GL_SHADER_STORAGE_BUFFER,0);
 
         bool gKeyWasPressed = false;
+
         // Main loop
         while (!window.ShouldClose()) {
 
