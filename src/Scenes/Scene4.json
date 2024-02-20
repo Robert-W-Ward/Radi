@@ -1,6 +1,5 @@
 {
     "Objects":[
-
         {
             "Type":0,
             "Position": {"x": -5.0, "y": 0.0, "z": 0.0, "w": 0.0},
@@ -33,7 +32,7 @@
             "Dimensions": {"x":1.0,"y":0.0,"z":0.0,"w":0.0},
             "Extra": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0},
             "Material": {
-                "Color": {"r": 1.0, "g": 0.0, "b": 0.8, "a": 0.9},
+                "Color": {"r": 1.0, "g": 0.0, "b": 0.8, "a": 0.2},
                 "Specular": 1.0,
                 "Shininess": 32.0,
                 "Reflectivity": 0.0,

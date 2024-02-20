@@ -50,7 +50,7 @@
         window.SetCamera(&camera);
 
         Radi::Types::RayMarchScene* RayMarchedScene = new Radi::Types::RayMarchScene();
-        RayMarchedScene->LoadSceneFromJson((PROJECT_ROOT + "\\Scenes\\Scene4.json").c_str());
+        RayMarchedScene->LoadSceneFromJson((PROJECT_ROOT + "\\Scenes\\Scene3.json").c_str());
 
         unsigned int VAO, VBO;
         setupFullscreenQuad(VAO,VBO);
