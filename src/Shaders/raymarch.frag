@@ -5,38 +5,15 @@ const int MAX_SHAPES = 50;
 #define BOX 1
 #define TRIANGLE 2
 #define PLANE 3
-
-
 #define POINT_LIGHT 999
 #define AREA 998
 #define DIRECTIONAL 997
-
 out vec4 FragColor;
 const int MAX_REFLECTION_DEPTH = 3;
 vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
-struct Material{
-    vec4 color;
-    float specular;
-    float shininess;
-    float reflectivity;
-    float ior;
-};
-
-struct Shape3D{
-    int type;
-    vec4 position;
-    vec4 dimensions;
-    vec4 extra;
-    Material material;
-};
-
-struct Hit{
-    vec3 normal;
-    Material material;
-    vec3 point;
-    float distance;
-    vec4 accumulatedColor;
-};
+struct Material{vec4 color;float specular;float shininess; float reflectivity;float ior;};
+struct Shape3D{int type;vec4 position;vec4 dimensions;vec4 extra;Material material;};
+struct Hit{vec3 normal;Material material;vec3 point;float distance;vec4 accumulatedColor;};
 
 struct Light{
     int type;
@@ -63,8 +40,18 @@ uniform float aspectRatio;    // Aspect ratio of the window
 uniform float VP_X;           // Viewport X
 uniform float VP_Y;           // Viewport Y
 uniform bool isDebug;
+uniform int u_samplesPerPixel;
+float random(vec2 co) {
+    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+}
 float dot2( in vec3 v ) { return dot(v,v); }
-
+float checkerboardPattern(vec3 p) {
+    float checkWidth = 1.0; // The width of each checker square
+    float checksX = floor(p.x / checkWidth);
+    float checksZ = floor(p.z / checkWidth);
+    float pattern = mod(checksX + checksZ, 2.0); // Alternates between 0 and 1
+    return pattern;
+}
 // //Gets the Ray direction throught he fullscreen quad based on the direction the camera is facing
 vec3 getRayDir(vec2 screenCoords){
     float scale = tan(radians(camFOV*0.5));
@@ -125,6 +112,20 @@ float SceneSDF(vec3 point,out Material hitMaterial){
                 break;
             case PLANE:
                 distance = sdPlane(point,normalize(shapes[i].position.xyz),shapes[i].dimensions.x);
+                if (distance < closestDist) {
+                    closestDist = distance;
+                    hitMaterial = shapes[i].material;
+                    
+                    // Check if this point on the plane is close enough to consider for texturing
+                    if (abs(distance) < 0.1) { // Arbitrary threshold for when to apply the texture
+                        float pattern = checkerboardPattern(point);
+                        if (pattern < 0.5) {
+                            hitMaterial.color = vec4(vec3(0.0),1.0); // Black
+                        } else {
+                            hitMaterial.color = vec4(vec3(1.0),1.0); // White
+                        }
+                    }
+                }
                 break;
             default:
                 break;
@@ -253,22 +254,12 @@ bool RayMarch(vec3 ro, vec3 rd, out Hit hit){
     }
     return hitSomething;
 }
-void main() {
-    //screen setup
-    vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
 
-    vec3 ro = camPos;
-    vec3 rd = getRayDir(screenCoords);
-    vec4 reflectionColor = vec4(0.0);
-    vec4 refractionColor = vec4(0.0);
-    vec4 finalColor;
-    Hit hit;
-    if(RayMarch(ro,rd,hit)){
-
-
-
+vec4 CalculateColor(vec3 rd, Hit hit){
+        vec4 reflectionColor = vec4(0.0);
+        vec4 refractionColor = vec4(0.0);
+        vec4 combinedColor = vec4(0.0);
         float fresnelEffect = fresnel(rd,hit.normal,hit.material.ior);
-
         // Reflection
         if(hit.material.reflectivity>0.0){
             vec3 reflectDir = reflect(rd, hit.normal);
@@ -280,7 +271,6 @@ void main() {
                 reflectionColor = BackgroundColor;
             }
         }
-
         // Refraction
         if (hit.material.color.a < 1.0) { 
             vec3 refractDir = refract(normalize(rd), hit.normal, 1.0 / hit.material.ior);
@@ -292,26 +282,53 @@ void main() {
                 refractionColor = BackgroundColor; 
             }
         }
+        combinedColor += reflectionColor * fresnelEffect; 
+        combinedColor += refractionColor * (1.0 - fresnelEffect); 
+        combinedColor = mix(hit.accumulatedColor, combinedColor, hit.material.reflectivity);       
 
-        vec4 finalColor = vec4(0.0);
-
-        if(hit.material.color.a<1.0){
-            // handle transparent but non- reflective
-        }else if(hit.material.reflectivity >0.0 && hit.material.color.a<1.0){
-            // handle material that is both reflective AND semi transparent
-        }else if(hit.material.reflectivity> 0.0){
-            // handle just reflective materials
-        }
-
-        finalColor += reflectionColor * fresnelEffect; 
-        finalColor += refractionColor * (1.0 - fresnelEffect); 
-        finalColor = mix(hit.accumulatedColor, finalColor, hit.material.reflectivity);       
-
-        finalColor.a = hit.accumulatedColor.a;
-        FragColor = finalColor;
-        if(isDebug)
-            FragColor = vec4(hit.normal,1.0);
-    }else{
-        FragColor = BackgroundColor;
-    }
+        combinedColor.a = hit.accumulatedColor.a;
+        return combinedColor;
 }
+
+void main() {
+    //screen setup
+    vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
+    vec3 ro = camPos;
+    vec3 rd = getRayDir(screenCoords);
+    int samples = int(sqrt(float(u_samplesPerPixel*u_samplesPerPixel)));
+    vec4 accumulatedColor = vec4(0.0);
+    Hit hit;
+    for (int sx = 0; sx < samples; ++sx) {
+        for (int sy = 0; sy < samples; ++sy) {
+            // Calculate the size of each stratum
+            float stratumWidth = 1.0 / float(samples);
+
+            // Jitter screen coordinates within each pixel's subarea
+            float jitterX = (float(sx) + random(gl_FragCoord.xy + vec2(sx, sy))) * stratumWidth;
+            float jitterY = (float(sy) + random(gl_FragCoord.xy + vec2(sx, sy))) * stratumWidth;
+            vec2 jitteredScreenCoords = screenCoords + (vec2(jitterX, jitterY) - 0.5) / vec2(VP_X, VP_Y);
+
+            if (isDebug  && abs(jitterX - 0.5 / float(samples)) < 0.05 && abs(jitterY - 0.5 / float(samples)) < 0.05) {
+                accumulatedColor = vec4(1.0,1.0,0.0,1.0);
+                return;
+            }else{
+                // Recalculate ray direction with jittered screen coordinates
+                vec3 rd = getRayDir(jitteredScreenCoords);
+
+                // Perform ray marching and accumulate color
+                if (RayMarch(ro, rd, hit)) {
+                    accumulatedColor += CalculateColor(rd,hit);
+                } else {
+                    accumulatedColor += BackgroundColor;
+                }
+            }
+
+         
+        }
+    }
+    FragColor = accumulatedColor / float(samples*samples);
+    //FragColor =accumulatedColor; 
+    if(isDebug)
+        FragColor = vec4(hit.normal,1.0);
+}
+    

@@ -1,7 +1,7 @@
 #include <cstring>
 #include "Shader.hpp"
 #include <glm/glm.hpp>
-#include "glm/gtc/type_ptr.hpp"
+#include <glm/gtc/type_ptr.hpp>
 Radi::Types::Shader::Shader(const char* vertexPath, const char* fragmentPath) {
 	std::string vertexCode;
 	std::string fragmentCode;
@@ -89,8 +89,19 @@ void Radi::Types::Shader::setBool(const std::string& name, bool value) const {
     glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value);
 }
 
-void Radi::Types::Shader::setInt(const std::string& name, int value)const {
+void Radi::Types::Shader::setInt(const std::string& name, int value) {
     glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
+    uniformIntegers[name] = value;
+}
+
+int Radi::Types::Shader::getInt(const std::string&name )const{
+    auto it = uniformIntegers.find(name);
+    if(it != uniformIntegers.end()){
+        return it->second;
+    }else{
+        std::cerr << "Uniform '"<<name << "' not found or not set yet. \n";
+        return 0;
+    }
 }
 
 void Radi::Types::Shader::setFloat(const std::string& name, float value)const {
