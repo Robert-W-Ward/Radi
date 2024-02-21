@@ -6,7 +6,7 @@
             "Dimensions": {"x":1.0,"y":0.0,"z":0.0,"w":0.0},
             "Extra": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0},
             "Material": {
-                "Color": {"r": 1.0, "g": 0.0, "b": 0.0, "a": 1.0},
+                "Color": {"r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0},
                 "Specular": 1.0,
                 "Shininess": 32.0,
                 "Reflectivity": 0.0,
@@ -19,7 +19,7 @@
            "Dimensions": {"x":1.0,"y":0.0,"z":0.0,"w":0.0},
            "Extra": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0},
            "Material": {
-               "Color": {"r": 0.0, "g": 1.0, "b": 0.0, "a": 1.0},
+               "Color": {"r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0},
                "Specular": 16.0,
                "Shininess": 32.0,
                "Reflectivity": 0.2,
@@ -32,8 +32,8 @@
             "Dimensions": {"x":1.0,"y":0.0,"z":0.0,"w":0.0},
             "Extra": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0},
             "Material": {
-                "Color": {"r": 1.0, "g": 0.0, "b": 0.8, "a": 0.2},
-                "Specular": 1.0,
+                "Color": {"r": 0.5, "g": 0.5, "b": 0.5, "a": 0.99},
+                "Specular": 2.0,
                 "Shininess": 32.0,
                 "Reflectivity": 0.0,
                 "IOR":1.44
@@ -45,7 +45,7 @@
             "Dimensions": {"x":1.0,"y":10.0,"z":-10.0,"w":0.0},
             "Extra": {"x": 10.0, "y": 0.0, "z": -10.0, "w": 0.0},
             "Material": {
-                "Color": {"r": 1.0, "g": 0.0, "b": 0.0, "a": 1.0},
+                "Color": {"r": 0.0, "g": 1.0, "b": 0.0, "a": 1.0},
                 "Specular": 1.0,
                 "Shininess": 32.0,
                 "Reflectivity": 0.0,
@@ -58,9 +58,9 @@
             "Dimensions": {"x": 20.0, "y": 50, "z": 20.0, "w": 0.0},
             "Extra": {"x": 0.0, "y": 0.0, "z": -10.0, "w": 1.0},
             "Material": {
-                "Color": {"r": 0.0, "g": 1.0, "b": 0.1, "a": 1.0},
+                "Color": {"r": 0.0, "g": 1.0, "b": 0.3, "a": 1.0},
                 "Specular": 1.0,
-                "Shininess": 32.0,
+                "Shininess": 16.0,
                 "Reflectivity": 0.0,
                 "IOR":1.0
             }
@@ -85,32 +85,48 @@
             "Type":999,
             "Position":{"x":-5.0,"y":2.0,"z":0,"w":0},
             "Direction":{"x":0,"y":0.0,"z":0,"w":0},
-            "Color":{"r":0.0,"g":1.0,"b":0.0,"a":1.0},
-            "Intensity":2.0
+            "Color":{"r":1.0,"g":0.0,"b":0.0,"a":1.0},
+            "Dimensions":{"x":0,"y":0.0,"z":0,"w":0},
+            "Intensity":0.0
     
         },
         {
             "Type":999,
             "Position":{"x":0.0,"y":2.0,"z":0,"w":0},
             "Direction":{"x":0,"y":0.0,"z":0,"w":0},
-            "Color":{"r":0.0,"g":0.0,"b":1.0,"a":1.0},
-            "Intensity":2.0
+            "Color":{"r":0.0,"g":1.0,"b":0.0,"a":1.0},
+            "Dimensions":{"x":0,"y":0.0,"z":0,"w":0},
+
+            "Intensity":0.0
     
         },
         {
             "Type":999,
             "Position":{"x":5.0,"y":2.0,"z":0,"w":0},
             "Direction":{"x":0,"y":0.0,"z":0,"w":0},
-            "Color":{"r":1.0,"g":0.0,"b":1.0,"a":1.0},
-            "Intensity":2.0
+            "Color":{"r":0.0,"g":0.0,"b":1.0,"a":1.0},
+            "Dimensions":{"x":0,"y":0.0,"z":0,"w":0},
+
+            "Intensity":0.0
     
         },
         {
             "Type":997,
             "Position":{"x":0,"y":1.0,"z":0,"w":0},
             "Direction":{"x":0,"y":-1.0,"z":0,"w":0},
-            "Color":{"r":0.5,"g":1.0,"b":0.8,"a":1.0},
-            "Intensity":1.0
+            "Color":{"r":1.0,"g":1.0,"b":1.0,"a":1.0},
+            "Dimensions":{"x":0,"y":0.0,"z":0,"w":0},
+
+            "Intensity":0.0
+        },
+        {
+            "Type":998,
+            "Position":{"x":-65,"y":65,"z":0,"w":0},
+            "Direction":{"x":0,"y":1.0,"z":0,"w":0},
+            "Color":{"r":0.0,"g":1.0,"b":0.0,"a":1.0},
+            "Dimensions":{"x":20,"y":5.0,"z":20.0,"w":0},
+            "Intensity":3.0
         }
+
     ]
 }

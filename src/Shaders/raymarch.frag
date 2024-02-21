@@ -8,6 +8,7 @@ const int MAX_SHAPES = 50;
 #define POINT_LIGHT 999
 #define AREA 998
 #define DIRECTIONAL 997
+#define DISC 996
 out vec4 FragColor;
 const int MAX_REFLECTION_DEPTH = 3;
 vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
@@ -20,6 +21,7 @@ struct Light{
     vec4 position;
     vec4 direction;
     vec4 color;
+    vec4 dimensions;
     float intensity;
 };
 
@@ -41,9 +43,25 @@ uniform float VP_X;           // Viewport X
 uniform float VP_Y;           // Viewport Y
 uniform bool isDebug;
 uniform int u_samplesPerPixel;
+uniform float time;
+
 float random(vec2 co) {
     return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
 }
+vec3 RandomPointOnRectangle(vec3 position, vec3 right, vec3 up) {
+    return position + right * (random(gl_FragCoord.xy) - 0.5) + up * (random(gl_FragCoord.yx) - 0.5);
+}
+
+vec3 RandomPointOnDisc(vec3 position, vec3 normal, float radius) {
+    float r = sqrt(random(gl_FragCoord.xy)) * radius;
+    float theta = random(gl_FragCoord.yx) * 2.0 * 3.14159265359;
+    vec3 localPoint = vec3(r * cos(theta), r * sin(theta), 0.0);
+    vec3 w = normalize(normal);
+    vec3 u = normalize(cross(abs(w.x) > 0.1 ? vec3(0,1,0) : vec3(1,0,0), w));
+    vec3 v = cross(w, u);
+    return position + u * localPoint.x + v * localPoint.y;
+}
+
 float dot2( in vec3 v ) { return dot(v,v); }
 float checkerboardPattern(vec3 p) {
     float checkWidth = 1.0; // The width of each checker square
@@ -145,7 +163,7 @@ Material backgroundMaterial(){
     return Material(vec4(0.0),1.0,1.0,0.0,1.0);
 }
 
-float ShadowRay(vec3 origin,vec3 dir,float maxDist){
+float ShadowRay(vec3 origin,vec3 dir,float maxDist,Light light){
     float shadow = 1.0;
     float t = 0.01;
     Material mat;
@@ -181,46 +199,72 @@ vec4 CalculateLighting(Hit hit){
     vec4 ambientColor = vec4(0.1,0.1,0.1,1.0);
     vec4 diffuseColor = vec4(0.0);
     vec4 specularColor = vec4(0.0);
-    
-    float lightDist = 1.0;
 
     for(int i = 0; i < lights.length();++i){
         vec3 lightDir;
+        float lightDist;
+        vec4 lightColor = lights[i].color * lights[i].intensity;
+        float shadow = 1;
+        
+
         switch(lights[i].type){
             case POINT_LIGHT:
                 lightDir = normalize(lights[i].position.xyz - hit.point);
                 lightDist = length(lights[i].position.xyz - hit.point);
+                shadow = ShadowRay(hit.point, lightDir, lightDist, lights[i]);
+
                 break;
             case DIRECTIONAL:
                 lightDist = 10000.0;
                 lightDir = normalize(-lights[i].direction.xyz);
+                shadow = ShadowRay(hit.point, lightDir, lightDist, lights[i]);
                 break;
             case AREA:
+                // Sample the area light
+                int samples = 4; // Number of samples for simplicity
+                vec4 totalLightColor = vec4(0.0);
+                for (int j = 0; j < samples; ++j) {
+                    // Simplified sampling logic
+                    vec3 samplePos = lights[i].position.xyz + vec3(
+                        (float(j) / float(samples) - 0.5) * lights[i].dimensions.x,
+                        0,
+                        (float(j) / float(samples) - 0.5) * lights[i].dimensions.z
+                    );
+                    lightDir = normalize(samplePos - hit.point);
+                    lightDist = length(samplePos - hit.point);
+                    shadow = ShadowRay(hit.point, lightDir, lightDist, lights[i]);
+                    // Calculate diffuse and specular for each sample and accumulate
+                    float attenuation = 1.0 / (1.0 + 0.09 * lightDist + 0.032 * (lightDist * lightDist));
+                    float diffuse = max(dot(hit.normal, lightDir), 0.0) * attenuation * shadow;
+                    vec3 specularReflectDir = reflect(-lightDir, hit.normal);
+                    float specular = pow(max(dot(camDir, specularReflectDir), 0.0), hit.material.shininess) * attenuation * shadow;
+                    totalLightColor += diffuse * lightColor * hit.material.color + specular * vec4(1.0, 1.0, 1.0, 1.0) * hit.material.specular;
+                }
+                diffuseColor += totalLightColor / float(samples);
+                specularColor += totalLightColor / float(samples); 
                 break;
             default:
                 break;
-        }        
-        float shadow = ShadowRay(hit.point,lightDir,lightDist);
-
-        float intensity = lights[i].intensity;
-        vec4 lightColor = lights[i].color * intensity;
-
-        float attenuation = 1.0;
-        if(lights[i].type == POINT_LIGHT) {
-            float constant = 1.0; // Constant attenuation factor
-            float linear = 0.09; // Linear attenuation factor
-            float quadratic = 0.032; // Quadratic attenuation factor
-            attenuation = 1.0 / (constant + linear * lightDist + quadratic * (lightDist * lightDist));
         }
 
-        // Diffuse
-        float diffuse = max(dot(hit.normal, lightDir),0.0);
-        diffuseColor += (diffuse * lightColor * hit.material.color)* attenuation *shadow;
 
-        //Specular
-        vec3 specularReflectDir = reflect(-lightDir,hit.normal);
-        float specular = pow(max(dot(camDir,specularReflectDir),0.0),hit.material.shininess);
-        specularColor +=  (specular * vec4(1.0,1.0,1.0,1.0) * hit.material.specular) *attenuation*shadow;
+         if (lights[i].type != AREA) {
+            // Non-area lights attenuation and lighting calculation
+            float attenuation = 1.0;
+            if (lights[i].type == POINT_LIGHT) {
+                float constant = 1.0;
+                float linear = 0.09;
+                float quadratic = 0.032;
+                attenuation = 1.0 / (constant + linear * lightDist + quadratic * (lightDist * lightDist));
+            }
+
+            float diffuse = max(dot(hit.normal, lightDir), 0.0);
+            diffuseColor += (diffuse * lightColor * hit.material.color) * attenuation * shadow;
+
+            vec3 specularReflectDir = reflect(-lightDir, hit.normal);
+            float specular = pow(max(dot(camDir, specularReflectDir), 0.0), hit.material.shininess);
+            specularColor += (specular * vec4(1.0, 1.0, 1.0, 1.0) * hit.material.specular) * attenuation * shadow;
+        }
     }
     vec4 lightingColor = ambientColor + diffuseColor + specularColor;
     lightingColor.a = hit.material.color.a;

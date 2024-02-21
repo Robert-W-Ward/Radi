@@ -85,6 +85,12 @@ namespace Radi::Types
                 obj["Color"]["b"].get<float>(),
                 obj["Color"]["a"].get<float>()
             );
+            light.dimensions = glm::vec4(
+                obj["Dimensions"]["x"].get<float>(),
+                obj["Dimensions"]["y"].get<float>(),
+                obj["Dimensions"]["z"].get<float>(),
+                obj["Dimensions"]["w"].get<float>()
+            );
             light.intensity = obj["Intensity"].get<float>();
             this->lights.push_back(light);
         }

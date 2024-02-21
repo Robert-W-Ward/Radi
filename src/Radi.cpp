@@ -21,6 +21,7 @@
 #define POINT_LIGHT 999
 #define AREA_LIGHT 998
 #define DIRECTIONAL_LIGHT 997
+#define DISCT_LIGHT 996
 const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
 const int VIEWPORT_X = 1920/2;
 const int VIEWPORT_Y = 1080/2;
@@ -102,6 +103,7 @@ int main() {
         shader.setFloat("aspectRatio",aspectRatio);
         shader.setFloat("VP_X",VIEWPORT_X);
         shader.setFloat("VP_Y",VIEWPORT_Y);
+        shader.setFloat("time",deltaTime);
         bool gKeyPressed = glfwGetKey(window.GetGLFWWindow(), GLFW_KEY_G)== GLFW_PRESS;
         if ( gKeyPressed && !gKeyWasPressed ){
             std::cout<<"PRESSING G"<<std::endl;
