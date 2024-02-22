@@ -26,6 +26,19 @@
                "IOR":1.0
            }
        },
+       {
+        "Type":0,
+        "Position": {"x": -20.0, "y": 1.0, "z": -20.0, "w": 1.0},
+        "Dimensions": {"x":1.0,"y":0.0,"z":0.0,"w":0.0},
+        "Extra": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0},
+        "Material": {
+            "Color": {"r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0},
+            "Specular": 1.0,
+            "Shininess": 32.0,
+            "Reflectivity": 0.0,
+            "IOR":1.0
+        }
+    },
         {
             "Type":0,
             "Position": {"x": 5.0, "y": 0.0, "z": 0.0, "w": 0.0},
@@ -87,7 +100,7 @@
             "Direction":{"x":0,"y":0.0,"z":0,"w":0},
             "Color":{"r":1.0,"g":0.0,"b":0.0,"a":1.0},
             "Dimensions":{"x":0,"y":0.0,"z":0,"w":0},
-            "Intensity":1.0
+            "Intensity":0
     
         },
         {
@@ -97,7 +110,7 @@
             "Color":{"r":0.0,"g":1.0,"b":0.0,"a":1.0},
             "Dimensions":{"x":0,"y":0.0,"z":0,"w":0},
 
-            "Intensity":1.0
+            "Intensity":0
     
         },
         {
@@ -107,7 +120,7 @@
             "Color":{"r":0.0,"g":0.0,"b":1.0,"a":1.0},
             "Dimensions":{"x":0,"y":0.0,"z":0,"w":0},
 
-            "Intensity":1.0
+            "Intensity":0
     
         },
         {
@@ -117,15 +130,15 @@
             "Color":{"r":1.0,"g":1.0,"b":1.0,"a":1.0},
             "Dimensions":{"x":0,"y":0.0,"z":0,"w":0},
 
-            "Intensity":0.01
+            "Intensity":0.3
         },
         {
             "Type":998,
-            "Position":{"x":-20,"y":2,"z":0,"w":0},
-            "Direction":{"x":0,"y":1.0,"z":0,"w":0},
-            "Color":{"r":1.0,"g":1.0,"b":1.0,"a":1.0},
-            "Dimensions":{"x":5.0,"y":5.0,"z":5.0,"w":0},
-            "Intensity":1.0
+            "Position":{"x":-20,"y":4,"z":-20,"w":0},
+            "Direction":{"x":0,"y":-1.0,"z":0,"w":0},
+            "Color":{"r":0.0,"g":1.0,"b":1.0,"a":1.0},
+            "Dimensions":{"x":1.0,"y":1.0,"z":5.0,"w":0},
+            "Intensity":3.0
         },
         {
             "Type":996,
@@ -133,7 +146,7 @@
             "Direction":{"x":0,"y":1.0,"z":0,"w":0},
             "Color":{"r":1.0,"g":1.0,"b":1.0,"a":1.0},
             "Dimensions":{"x":1.0,"y":5.0,"z":1.0,"w":0.1},
-            "Intensity":1.0
+            "Intensity":0.0
         }
 
     ]

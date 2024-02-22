@@ -6,7 +6,7 @@ const int MAX_SHAPES = 50;
 #define TRIANGLE 2
 #define PLANE 3
 #define POINT_LIGHT 999
-#define AREA 998
+#define RECTANGLE_LIGHT 998
 #define DIRECTIONAL 997
 #define DISC 996
 out vec4 FragColor;
@@ -199,46 +199,75 @@ vec4 CalculateLighting(Hit hit) {
             lightDir = normalize(-lights[i].direction.xyz);
             lightDist = 10000.0; // Use a large distance for directional lights
             shadow = ShadowRay(hit.point, lightDir, lightDist, lights[i]);
-        } else {
-            if (lights[i].type == POINT_LIGHT || lights[i].type == DISC) {
-                lightDir = normalize(lights[i].position.xyz - hit.point);
-                lightDist = length(lights[i].position.xyz - hit.point);
-                shadow = ShadowRay(hit.point, lightDir, lightDist, lights[i]);
-            }
-
-            // Attenuation for Point and Disc lights
-            if (lights[i].type == POINT_LIGHT || lights[i].type == DISC) {
-                float constant = 1.0;
-                float linear = 0.09;
-                float quadratic = 0.032;
-                attenuation = 1.0 / (constant + linear * lightDist + quadratic * (lightDist * lightDist));
-            }
-        }
-
-        // Special handling for area light to avoid dominating the scene
-        if (lights[i].type == AREA) {
-            // Calculate a representative sample position for the area light
-            vec3 samplePos = lights[i].position.xyz; // Simplified for demonstration
-            lightDir = normalize(samplePos - hit.point);
-            lightDist = length(samplePos - hit.point);
+        } else if (lights[i].type == POINT_LIGHT) {
+            lightDir = normalize(lights[i].position.xyz - hit.point);
+            lightDist = length(lights[i].position.xyz - hit.point);
             shadow = ShadowRay(hit.point, lightDir, lightDist, lights[i]);
-            // Custom attenuation logic for area lights, considering their spread and distance
-            attenuation = 1.0 / (1.0 + 0.09 * lightDist + 0.032 * (lightDist * lightDist));
+            float constant = 1.0;
+            float linear = 0.09;
+            float quadratic = 0.032;
+            attenuation = 1.0 / (constant + linear * lightDist + quadratic * (lightDist * lightDist));
+        }else if (lights[i].type == RECTANGLE_LIGHT) {
+            vec3 rectangleNormal = normalize(lights[i].direction.xyz);
+            float rectangleWidth = lights[i].dimensions.x;
+            float rectangleHeight = lights[i].dimensions.y;
+            int samples = 4; // Number of samples for approximation
+
+            vec3 u = normalize(cross(rectangleNormal, vec3(0.0, 1.0, 0.0)));
+            vec3 v = normalize(cross(rectangleNormal, u));
+            u *= rectangleWidth * 0.5;
+            v *= rectangleHeight * 0.5;
+
+            for (int j = 0; j < samples; ++j) {
+                float speed = 0.5;
+
+                vec3 center = lights[i].position.xyz;
+                vec3 movingPos = center + vec3(
+                    cos(time * speed) * 10,
+                    10,
+                    sin(time*speed) * 10
+                );
+                vec3 samplePoint = movingPos + vec3(
+                    (float(j) / float(samples) - 0.5) * lights[i].dimensions.x,
+                    0,
+                    (float(j) / float(samples) - 0.5) * lights[i].dimensions.z
+                );
+                // Calculate light direction and distance for the sample
+                lightDir = normalize(samplePoint - hit.point);
+                lightDist = length(samplePoint - hit.point);
+
+                // Shadow and attenuation calculation similar to point light but for each sample
+                shadow = ShadowRay(hit.point, lightDir, lightDist, lights[i]);
+                // Assuming linear attenuation for simplicity; could be modified for realistic falloff
+                attenuation = 1.0 / (1.0 + 0.09 * lightDist + 0.032 * (lightDist * lightDist));
+
+                // Calculate diffuse and specular contribution from this sample
+                float diffuseSample = max(dot(hit.normal, lightDir), 0.0) * attenuation * shadow;
+                vec3 specularReflectDir = reflect(-lightDir, hit.normal);
+                float specularSample = pow(max(dot(camDir, specularReflectDir), 0.0), hit.material.shininess) * attenuation * shadow;
+
+                // Accumulate contributions from all samples
+                vec4 sampleLightColor = (diffuseSample * lightColor * hit.material.color) + (specularSample * vec4(1.0, 1.0, 1.0, 1.0) * hit.material.specular);
+                diffuseColor += sampleLightColor / float(samples);
+                specularColor += sampleLightColor / float(samples);
+            }
+        }else if (lights[i].type == DISC){}
+        if(lights[i].type!= RECTANGLE_LIGHT){
+            // Calculate diffuse and specular components
+            float diffuse = max(dot(hit.normal, lightDir), 0.0) * attenuation * shadow;
+            vec3 specularReflectDir = reflect(-lightDir, hit.normal);
+            float specular = pow(max(dot(camDir, specularReflectDir), 0.0), hit.material.shininess) * attenuation * shadow;
+
+            // Accumulate lighting contributions
+            vec4 totalLightColor = (diffuse * lightColor * hit.material.color) + (specular * vec4(1.0, 1.0, 1.0, 1.0) * hit.material.specular);
+            diffuseColor += totalLightColor;
+            specularColor += totalLightColor; 
+
         }
-
-        // Calculate diffuse and specular components
-        float diffuse = max(dot(hit.normal, lightDir), 0.0) * attenuation * shadow;
-        vec3 specularReflectDir = reflect(-lightDir, hit.normal);
-        float specular = pow(max(dot(camDir, specularReflectDir), 0.0), hit.material.shininess) * attenuation * shadow;
-
-        // Accumulate lighting contributions
-        vec4 totalLightColor = (diffuse * lightColor * hit.material.color) + (specular * vec4(1.0, 1.0, 1.0, 1.0) * hit.material.specular);
-        diffuseColor += totalLightColor;
-        specularColor += totalLightColor; // Assuming specular is meant to be accumulated similarly
     }
 
     vec4 lightingColor = ambientColor + diffuseColor + specularColor;
-    lightingColor.a = hit.material.color.a; // Preserve alpha value of the material
+    lightingColor.a = hit.material.color.a; 
     return lightingColor;
 }
 
