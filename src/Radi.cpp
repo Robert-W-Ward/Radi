@@ -103,7 +103,7 @@ int main() {
         shader.setFloat("aspectRatio",aspectRatio);
         shader.setFloat("VP_X",VIEWPORT_X);
         shader.setFloat("VP_Y",VIEWPORT_Y);
-        shader.setFloat("time",deltaTime);
+        shader.setFloat("time",currentFrame);
         bool gKeyPressed = glfwGetKey(window.GetGLFWWindow(), GLFW_KEY_G)== GLFW_PRESS;
         if ( gKeyPressed && !gKeyWasPressed ){
             std::cout<<"PRESSING G"<<std::endl;
