@@ -39,6 +39,8 @@ uniform vec3 camUp;           // Camera up vector
 uniform vec3 camRight;        // Camera right vector
 uniform float camFOV;         // Camera field of view
 uniform float aspectRatio;    // Aspect ratio of the window
+uniform float focusDistance;
+uniform float aperture;
 uniform float VP_X;           // Viewport X
 uniform float VP_Y;           // Viewport Y
 uniform bool isDebug;
@@ -255,13 +257,16 @@ vec4 CalculateLighting(Hit hit) {
         if(lights[i].type!= RECTANGLE_LIGHT){
             // Calculate diffuse and specular components
             float diffuse = max(dot(hit.normal, lightDir), 0.0) * attenuation * shadow;
-            vec3 specularReflectDir = reflect(-lightDir, hit.normal);
+            vec3 specularReflectDir = reflect(lightDir, hit.normal);
             float specular = pow(max(dot(camDir, specularReflectDir), 0.0), hit.material.shininess) * attenuation * shadow;
 
             // Accumulate lighting contributions
             vec4 totalLightColor = (diffuse * lightColor * hit.material.color) + (specular * vec4(1.0, 1.0, 1.0, 1.0) * hit.material.specular);
-            diffuseColor += totalLightColor;
-            specularColor += totalLightColor; 
+            vec4 diffuseContribution = diffuse * lightColor * hit.material.color;
+            vec4 specularContribution = specular * vec4(1.0, 1.0, 1.0, 1.0) * hit.material.specular;
+
+            diffuseColor += diffuseContribution;
+            specularColor += specularContribution; 
 
         }
     }
@@ -302,38 +307,57 @@ bool RayMarch(vec3 ro, vec3 rd, out Hit hit){
 }
 
 vec4 CalculateColor(vec3 rd, Hit hit){
-        vec4 reflectionColor = vec4(0.0);
-        vec4 refractionColor = vec4(0.0);
-        vec4 combinedColor = vec4(0.0);
-        float fresnelEffect = fresnel(rd,hit.normal,hit.material.ior);
-        // Reflection
-        if(hit.material.reflectivity>0.0){
-            vec3 reflectDir = reflect(rd, hit.normal);
-            vec3 reflectOrigin = hit.point + hit.normal * 0.01;
-            Hit reflectHit;
-            if(RayMarch(reflectOrigin,reflectDir,reflectHit)){
-                reflectionColor = reflectHit.accumulatedColor;
-            }else{
-                reflectionColor = BackgroundColor;
-            }
+    vec4 reflectionColor = vec4(0.0);
+    vec4 refractionColor = vec4(0.0);
+    vec4 combinedColor = vec4(0.0);
+    float fresnelEffect = fresnel(rd,hit.normal,hit.material.ior);
+    // Reflection
+    if(hit.material.reflectivity>0.0){
+        vec3 reflectDir = reflect(rd, hit.normal);
+        vec3 reflectOrigin = hit.point + hit.normal * 0.01;
+        Hit reflectHit;
+        if(RayMarch(reflectOrigin,reflectDir,reflectHit)){
+            reflectionColor = reflectHit.accumulatedColor;
+        }else{
+            reflectionColor = BackgroundColor;
         }
-        // Refraction
-        if (hit.material.color.a < 1.0) { 
-            vec3 refractDir = refract(normalize(rd), hit.normal, 1.0 / hit.material.ior);
-            vec3 refractOrigin = hit.point - hit.normal * 0.001; 
-            Hit refractHit;
-            if (RayMarch(refractOrigin, refractDir, refractHit)) {
-                refractionColor = refractHit.accumulatedColor; 
-            } else {
-                refractionColor = BackgroundColor; 
-            }
+    }
+    // Refraction
+    if (hit.material.color.a < 1.0) { 
+        vec3 refractDir = refract(normalize(rd), hit.normal, 1.0 / hit.material.ior);
+        vec3 refractOrigin = hit.point - hit.normal * 0.001; 
+        Hit refractHit;
+        if (RayMarch(refractOrigin, refractDir, refractHit)) {
+            refractionColor = refractHit.accumulatedColor; 
+        } else {
+            refractionColor = BackgroundColor; 
         }
-        combinedColor += reflectionColor * fresnelEffect; 
-        combinedColor += refractionColor * (1.0 - fresnelEffect); 
-        combinedColor = mix(hit.accumulatedColor, combinedColor, hit.material.reflectivity);       
+    }
+    combinedColor += reflectionColor * fresnelEffect; 
+    combinedColor += refractionColor * (1.0 - fresnelEffect); 
+    combinedColor = mix(hit.accumulatedColor, combinedColor, hit.material.reflectivity);       
 
-        combinedColor.a = hit.accumulatedColor.a;
-        return combinedColor;
+    combinedColor.a = hit.accumulatedColor.a;
+    return combinedColor;
+}
+vec2 concentricSampleDisk(float u, float v) {
+    float phi, r;
+    float a = 2.0 * u - 1.0;
+    float b = 2.0 * v - 1.0;
+    float PI = 3.14159;
+    if (a == 0.0 && b == 0.0) {
+        return vec2(0, 0);
+    }
+
+    if (a * a > b * b) { 
+        r = a;
+        phi = (PI / 4.0) * (b / a);
+    } else {
+        r = b;
+        phi = (PI / 2.0) - (PI / 4.0) * (a / b);
+    }
+
+    return r * vec2(cos(phi), sin(phi));
 }
 
 void main() {
@@ -344,6 +368,9 @@ void main() {
     int samples = int(sqrt(float(u_samplesPerPixel*u_samplesPerPixel)));
     vec4 accumulatedColor = vec4(0.0);
     Hit hit;
+    int timeSamples = 5;
+    float timeStep = .02;
+
     for (int sx = 0; sx < samples; ++sx) {
         for (int sy = 0; sy < samples; ++sy) {
             // Calculate the size of each stratum
@@ -354,27 +381,28 @@ void main() {
             float jitterY = (float(sy) + random(gl_FragCoord.xy + vec2(sx, sy))) * stratumWidth;
             vec2 jitteredScreenCoords = screenCoords + (vec2(jitterX, jitterY) - 0.5) / vec2(VP_X, VP_Y);
 
+
+            vec2 diskSample = concentricSampleDisk(jitterX, jitterY);
+            vec2 apertureOffset = aperture * diskSample;
+            vec3 newRayOrigin = ro + camRight * apertureOffset.x + camUp * apertureOffset.y;
+            vec3 focalPoint = ro + rd * focusDistance; 
+            vec3 newRayDir = normalize(focalPoint - newRayOrigin);
+
+            // Perform ray marching and accumulate color
+            if (RayMarch(newRayOrigin, newRayDir, hit)) {
+                accumulatedColor += CalculateColor(rd,hit);
+            } else {
+                accumulatedColor += BackgroundColor;
+            }
+            
             if (isDebug  && abs(jitterX - 0.5 / float(samples)) < 0.05 && abs(jitterY - 0.5 / float(samples)) < 0.05) {
                 accumulatedColor = vec4(1.0,1.0,0.0,1.0);
                 return;
-            }else{
-                // Recalculate ray direction with jittered screen coordinates
-                vec3 rd = getRayDir(jitteredScreenCoords);
-
-                // Perform ray marching and accumulate color
-                if (RayMarch(ro, rd, hit)) {
-                    accumulatedColor += CalculateColor(rd,hit);
-                } else {
-                    accumulatedColor += BackgroundColor;
-                }
             }
-
-         
         }
     }
     FragColor = accumulatedColor / float(samples*samples);
     //FragColor =accumulatedColor; 
     if(isDebug)
         FragColor = vec4(hit.normal,1.0);
-}
-    
+}   

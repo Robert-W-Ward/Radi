@@ -83,4 +83,14 @@ namespace Radi::Types{
         if (Zoom > 45.0f)
             Zoom = 45.0f; 
     }
+    void Camera::ProcessApertureChange(double xoffset,double yoffset){
+        const double scalingFactor = 0.01;
+        aperture += yoffset * scalingFactor;
+        if(aperture <0.001){
+            aperture = 0.001;
+        }
+        if(aperture >.9){
+            aperture = .9;
+        }
+    }
 }

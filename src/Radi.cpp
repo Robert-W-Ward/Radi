@@ -104,6 +104,8 @@ int main() {
         shader.setFloat("VP_X",VIEWPORT_X);
         shader.setFloat("VP_Y",VIEWPORT_Y);
         shader.setFloat("time",currentFrame);
+        shader.setFloat("focusDistance",RayMarchedScene->GetCameraInfo().focusDistance);
+        shader.setFloat("aperture",camera.aperture);
         bool gKeyPressed = glfwGetKey(window.GetGLFWWindow(), GLFW_KEY_G)== GLFW_PRESS;
         if ( gKeyPressed && !gKeyWasPressed ){
             std::cout<<"PRESSING G"<<std::endl;

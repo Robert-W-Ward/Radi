@@ -113,6 +113,8 @@ namespace Radi::Types{
         if (glfwGetKey(glWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || 
             glfwGetKey(glWindow, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS) {
             camera->ProcessFOVChange(xoffset,yoffset);
+        }else if(glfwGetKey(glWindow,GLFW_KEY_LEFT_ALT)){
+            camera->ProcessApertureChange(xoffset,yoffset);
         }
     }
     

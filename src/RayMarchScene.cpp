@@ -94,9 +94,13 @@ namespace Radi::Types
             light.intensity = obj["Intensity"].get<float>();
             this->lights.push_back(light);
         }
+
+        camInfo.focusDistance = jsonData["Camera"]["focusDistance"].get<float>();
+        camInfo.aperture = jsonData["Camera"]["aperture"].get<float>();
+        camInfo.aspectRatio = jsonData["Camera"]["aspectRatio"].get<float>();
     }
     void RayMarchScene::Render(Radi::Types::Shader* shader){
         // Rendering for RayMarched scenes happens exclusively on the GPU
     }
-
+    
 } 

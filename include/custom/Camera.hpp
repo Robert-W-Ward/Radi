@@ -18,6 +18,8 @@ namespace Radi::Types {
             float MovementSpeed;
             float MouseSensitivity;
             float Zoom;
+            float aperture;
+            float focusDistance;
             Camera();
 
             glm::mat4 GetViewMatrix() const;
@@ -26,6 +28,7 @@ namespace Radi::Types {
             void ProcessKeyboard(int direction, float deltaTime);
             void ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch);
             void ProcessFOVChange(double xoffset,double yoffset);
+            void ProcessApertureChange(double xoffset,double yoffset);
             void UpdateCameraVectors();
     };
 
