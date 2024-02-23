@@ -409,11 +409,14 @@ void main() {
                 // Calculate the size of each stratum
                 float stratumWidth = 1.0 / float(samples);
 
+
+
                 // Jitter screen coordinates within each pixel's subarea
                 float jitterX = (float(sx) + random(gl_FragCoord.xy + vec2(sx, sy))) * stratumWidth;
                 float jitterY = (float(sy) + random(gl_FragCoord.xy + vec2(sx, sy))) * stratumWidth;
                 vec2 jitteredScreenCoords = screenCoords + (vec2(jitterX, jitterY) - 0.5) / vec2(VP_X, VP_Y);
 
+                vec3 rd = getRayDir(jitteredScreenCoords); // Recalculate rd with jitter applied
 
                 vec2 diskSample = concentricSampleDisk(jitterX, jitterY);
                 vec2 apertureOffset = aperture * diskSample;
@@ -425,7 +428,7 @@ void main() {
                 if (RayMarch(newRayOrigin, newRayDir, hit)) {
                     accumulatedColor += CalculateColor(rd,hit);
                 } else {
-                    accumulatedColor = BackgroundColor;
+                    accumulatedColor += BackgroundColor;
                 }
                 
                 if (isDebug  && abs(jitterX - 0.5 / float(samples)) < 0.05 && abs(jitterY - 0.5 / float(samples)) < 0.05) {
