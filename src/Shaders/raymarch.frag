@@ -387,7 +387,7 @@ void main() {
     vec4 colorWithBlur = vec4(0.0);
     vec3 ro = camPos;
     vec3 rd = getRayDir(screenCoords);
-    int samples = int(sqrt(float(u_samplesPerPixel*u_samplesPerPixel)));
+    int samples = int(float(u_samplesPerPixel*u_samplesPerPixel));
     vec4 accumulatedColor = vec4(0.0);
     Hit hit;
     if(motionBlurActive){
@@ -408,8 +408,6 @@ void main() {
             for (int sy = 0; sy < samples; ++sy) {
                 // Calculate the size of each stratum
                 float stratumWidth = 1.0 / float(samples);
-
-
 
                 // Jitter screen coordinates within each pixel's subarea
                 float jitterX = (float(sx) + random(gl_FragCoord.xy + vec2(sx, sy))) * stratumWidth;
