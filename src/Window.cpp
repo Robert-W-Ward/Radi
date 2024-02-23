@@ -149,11 +149,14 @@ namespace Radi::Types{
                         shader->setInt("u_samplesPerPixel", value);
                         std::cout<<"Decreased samples to: "<< value << "\n";
                         break;
+                    case GLFW_KEY_B:
+                        motionBlurActive = !motionBlurActive;
+                        shader->setBool("motionBlurActive",motionBlurActive);
+                        std::cout << "Motion Blur " << (motionBlurActive ? "Enabled" : "Disabled") << "\n";
                     default:
                         break;
                 }
             }
-            
         }       
     }
     

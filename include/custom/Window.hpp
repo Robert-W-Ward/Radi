@@ -36,6 +36,7 @@ namespace Radi::Types{
         Shader* shader;
         double lastX,lastY;
         bool firstMouse;
+        bool motionBlurActive;
         // Prevent copying
         Window(const Window&) = delete;
         Window& operator=(const Window&) = delete;

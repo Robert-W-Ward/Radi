@@ -28,7 +28,6 @@ const int VIEWPORT_Y = 1080/2;
 const int WINDOW_X = 1920/2;
 const int WINDOW_Y = 1080/2;
 const int aspectRatio = static_cast<float>(WINDOW_X)/ static_cast<float>(WINDOW_Y);
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods );
 void setupFullscreenQuad(unsigned int &VAO, unsigned int &VBO);
 nlohmann::json loadScene(const std::string& path);
 bool isDebug = false;
@@ -79,7 +78,7 @@ int main() {
 
     bool gKeyWasPressed = false;
 
-
+    shader.setBool("motionBlurActive",false);
     // Main loop
     while (!window.ShouldClose()) {
 
@@ -111,6 +110,7 @@ int main() {
             std::cout<<"PRESSING G"<<std::endl;
             isDebug = !isDebug;
         }
+        
 
         gKeyWasPressed = gKeyPressed;  
         shader.setBool("isDebug",isDebug);

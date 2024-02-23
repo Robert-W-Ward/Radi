@@ -11,6 +11,7 @@ const int MAX_SHAPES = 50;
 #define DISC 996
 out vec4 FragColor;
 const int MAX_REFLECTION_DEPTH = 3;
+float virtualTime;
 vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
 struct Material{vec4 color;float specular;float shininess; float reflectivity;float ior;};
 struct Shape3D{int type;vec4 position;vec4 dimensions;vec4 extra;Material material;};
@@ -46,6 +47,7 @@ uniform float VP_Y;           // Viewport Y
 uniform bool isDebug;
 uniform int u_samplesPerPixel;
 uniform float time;
+uniform bool motionBlurActive;
 
 float random(vec2 co) {
     return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
@@ -76,12 +78,18 @@ float fresnel(vec3 viewDir, vec3 normal, float ior) {
 float sphereSDF(vec3 rayPos, vec3 sphereCenter, float sphereRadius) {
     return length(rayPos - sphereCenter) - sphereRadius;
 }
-float sdBox(vec3 p, vec3 b, vec3 position, vec3 scale) {
-    // Apply inverse scale to point p to simulate scaling the box
-    p = (p - position) / scale;
-    vec3 q = abs(p) - b;
-    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) * min(min(scale.x, scale.y), scale.z);
+
+vec3 rotateY(vec3 p, float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    return vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
 }
+
+float sdBox(vec3 p, vec3 b, vec3 position, vec3 scale) {
+    vec3 q = abs(p) - b;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
 float udTriangle( vec3 p, vec3 a, vec3 b, vec3 c ){
   vec3 ba = b - a; vec3 pa = p - a;
   vec3 cb = c - b; vec3 pb = p - b;
@@ -103,16 +111,30 @@ float udTriangle( vec3 p, vec3 a, vec3 b, vec3 c ){
 float sdPlane(vec3 p, vec3 n, float h){
     return dot(p,n) + h;
 }
+
+
+
+
 float SceneSDF(vec3 point,out Material hitMaterial){
     float closestDist = 1e9;
     float distance = 1e9;
     for(int i =0; i< shapes.length();++i){
+        vec3 modifiedPos = shapes[i].position.xyz;
+        vec3 position = shapes[i].position.xyz;
+        vec3 dimensions = shapes[i].dimensions.xyz;
+      
+
         switch(shapes[i].type){
             case SPHERE:
                 distance = sphereSDF(point,shapes[i].position.xyz,shapes[i].dimensions.x);
                 break;
             case BOX:
-                distance = sdBox(point,shapes[i].dimensions.xyz/2.0,shapes[i].position.xyz,vec3(1.0));
+                if(true){
+                    float angle = virtualTime;
+                    vec3 pLocal = point - shapes[i].position.xyz;
+                    pLocal = rotateY(pLocal,angle);
+                    distance = sdBox(pLocal, dimensions.xyz / 2.0, vec3(0.0), vec3(1.0));
+                }
                 break;
             case TRIANGLE:
                 distance = udTriangle(point,shapes[i].position.xyz,shapes[i].dimensions.xyz,shapes[i].extra.xyz);
@@ -276,8 +298,6 @@ vec4 CalculateLighting(Hit hit) {
     return lightingColor;
 }
 
-
-
 bool RayMarch(vec3 ro, vec3 rd, out Hit hit){
     //out vec4 color, out vec3 hitPoint, out vec3 hitNormal, out Material mat
     float depth = 0.0;
@@ -363,46 +383,60 @@ vec2 concentricSampleDisk(float u, float v) {
 void main() {
     //screen setup
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
+    vec4 colorWithoutBlur = vec4(0.0);
+    vec4 colorWithBlur = vec4(0.0);
     vec3 ro = camPos;
     vec3 rd = getRayDir(screenCoords);
     int samples = int(sqrt(float(u_samplesPerPixel*u_samplesPerPixel)));
     vec4 accumulatedColor = vec4(0.0);
     Hit hit;
-    int timeSamples = 5;
-    float timeStep = .02;
-
-    for (int sx = 0; sx < samples; ++sx) {
-        for (int sy = 0; sy < samples; ++sy) {
-            // Calculate the size of each stratum
-            float stratumWidth = 1.0 / float(samples);
-
-            // Jitter screen coordinates within each pixel's subarea
-            float jitterX = (float(sx) + random(gl_FragCoord.xy + vec2(sx, sy))) * stratumWidth;
-            float jitterY = (float(sy) + random(gl_FragCoord.xy + vec2(sx, sy))) * stratumWidth;
-            vec2 jitteredScreenCoords = screenCoords + (vec2(jitterX, jitterY) - 0.5) / vec2(VP_X, VP_Y);
-
-
-            vec2 diskSample = concentricSampleDisk(jitterX, jitterY);
-            vec2 apertureOffset = aperture * diskSample;
-            vec3 newRayOrigin = ro + camRight * apertureOffset.x + camUp * apertureOffset.y;
-            vec3 focalPoint = ro + rd * focusDistance; 
-            vec3 newRayDir = normalize(focalPoint - newRayOrigin);
-
-            // Perform ray marching and accumulate color
-            if (RayMarch(newRayOrigin, newRayDir, hit)) {
-                accumulatedColor += CalculateColor(rd,hit);
+    if(motionBlurActive){
+        int timeSamples = 5;
+        float blurDur = .2;
+        for(int ts = 0;ts < timeSamples; ++ts){
+            virtualTime = time + (float(ts) / float(timeSamples - 1) - 0.5) * blurDur;
+            Hit hit; 
+            if (RayMarch(ro, rd, hit)) {
+                colorWithBlur += CalculateColor(rd, hit);
             } else {
-                accumulatedColor += BackgroundColor;
-            }
-            
-            if (isDebug  && abs(jitterX - 0.5 / float(samples)) < 0.05 && abs(jitterY - 0.5 / float(samples)) < 0.05) {
-                accumulatedColor = vec4(1.0,1.0,0.0,1.0);
-                return;
+                colorWithBlur += BackgroundColor;
             }
         }
+        colorWithBlur /= float(timeSamples);
+    }else{
+        for (int sx = 0; sx < samples; ++sx) {
+            for (int sy = 0; sy < samples; ++sy) {
+                // Calculate the size of each stratum
+                float stratumWidth = 1.0 / float(samples);
+
+                // Jitter screen coordinates within each pixel's subarea
+                float jitterX = (float(sx) + random(gl_FragCoord.xy + vec2(sx, sy))) * stratumWidth;
+                float jitterY = (float(sy) + random(gl_FragCoord.xy + vec2(sx, sy))) * stratumWidth;
+                vec2 jitteredScreenCoords = screenCoords + (vec2(jitterX, jitterY) - 0.5) / vec2(VP_X, VP_Y);
+
+
+                vec2 diskSample = concentricSampleDisk(jitterX, jitterY);
+                vec2 apertureOffset = aperture * diskSample;
+                vec3 newRayOrigin = ro + camRight * apertureOffset.x + camUp * apertureOffset.y;
+                vec3 focalPoint = ro + rd * focusDistance; 
+                vec3 newRayDir = normalize(focalPoint - newRayOrigin);
+
+                // Perform ray marching and accumulate color
+                if (RayMarch(newRayOrigin, newRayDir, hit)) {
+                    accumulatedColor += CalculateColor(rd,hit);
+                } else {
+                    accumulatedColor = BackgroundColor;
+                }
+                
+                if (isDebug  && abs(jitterX - 0.5 / float(samples)) < 0.05 && abs(jitterY - 0.5 / float(samples)) < 0.05) {
+                    accumulatedColor = vec4(1.0,1.0,0.0,1.0);
+                    return;
+                }
+            } 
+        }
+        accumulatedColor = accumulatedColor / float(samples*samples);
     }
-    FragColor = accumulatedColor / float(samples*samples);
-    //FragColor =accumulatedColor; 
+    FragColor = motionBlurActive ? colorWithBlur: accumulatedColor;  
     if(isDebug)
         FragColor = vec4(hit.normal,1.0);
 }   

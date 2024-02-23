@@ -82,7 +82,20 @@
                 "Reflectivity": 0.0,
                 "IOR":1.0
             }
-        },    
+        },
+        {
+            "Type": 1,
+            "Position": {"x": -65.0, "y": 1.0, "z": 30.0, "w": 0.0},
+            "Dimensions": {"x": 20.0, "y": 50, "z": 20.0, "w": 0.0},
+            "Extra": {"x": 0.0, "y": 0.0, "z": -10.0, "w": 1.0},
+            "Material": {
+                "Color": {"r": 0.0, "g": 0.0, "b": 1.0, "a": 1.0},
+                "Specular": 1.0,
+                "Shininess": 1.0,
+                "Reflectivity": 0.0,
+                "IOR":1.0
+            }
+        },     
        {
         "Type": 3,
         "Position": {"x": 0.0, "y": 1.0, "z": 0.0, "w": 0.0},
@@ -135,7 +148,7 @@
             "Color":{"r":1.0,"g":1.0,"b":1.0,"a":1.0},
             "Dimensions":{"x":0,"y":0.0,"z":0,"w":0},
 
-            "Intensity":0.2
+            "Intensity":1.0
         },
         {
             "Type":998,
