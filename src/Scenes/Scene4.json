@@ -15,7 +15,9 @@
                 "Specular": 1.0,
                 "Shininess": 32.0,
                 "Reflectivity": 0.0,
-                "IOR":1.0
+                "IOR":1.0,
+                "Roughness": 0.0,
+                "Albedo": 0.0
             }
         },
         {
@@ -28,7 +30,9 @@
                "Specular": 1.0,
                "Shininess": 32.0,
                "Reflectivity": 0.2,
-               "IOR":1.0
+               "IOR":1.0,
+               "Roughness": 0.0,
+               "Albedo": 0.0
            }
        },
        {
@@ -41,7 +45,9 @@
             "Specular": 1.0,
             "Shininess": 32.0,
             "Reflectivity": 0.0,
-            "IOR":1.0
+            "IOR":1.0,
+            "Roughness": 0.0,
+            "Albedo": 0.0
         }
     },
         {
@@ -54,7 +60,9 @@
                 "Specular": 2.0,
                 "Shininess": 32.0,
                 "Reflectivity": 0.0,
-                "IOR":1.44
+                "IOR":1.44,
+                "Roughness": 0.0,
+                "Albedo": 0.0
             }
         },
         {
@@ -67,7 +75,9 @@
                 "Specular": 1.0,
                 "Shininess": 32.0,
                 "Reflectivity": 0.0,
-                "IOR":1.0
+                "IOR":1.0,
+                "Roughness": 0.0,
+                "Albedo": 0.0
             }
         },
         {
@@ -80,7 +90,9 @@
                 "Specular": 1.0,
                 "Shininess": 16.0,
                 "Reflectivity": 0.0,
-                "IOR":1.0
+                "IOR":1.0,
+                "Roughness": 0.0,
+                "Albedo": 0.0
             }
         },
         {
@@ -93,7 +105,9 @@
                 "Specular": 1.0,
                 "Shininess": 1.0,
                 "Reflectivity": 0.0,
-                "IOR":1.0
+                "IOR":1.0,
+                "Roughness": 0.0,
+                "Albedo": 0.0
             }
         },     
        {
@@ -106,7 +120,9 @@
             "Specular": 2.0,
             "Shininess": 32.0,
             "Reflectivity": 0.0,
-            "IOR":1.0
+            "IOR":1.0,
+            "Roughness": 0.0,
+            "Albedo": 0.0
         }
     }
     ],

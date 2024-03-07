@@ -13,7 +13,7 @@ out vec4 FragColor;
 const int MAX_REFLECTION_DEPTH = 3;
 float virtualTime;
 vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
-struct Material{vec4 color;float specular;float shininess; float reflectivity;float ior;};
+struct Material{vec4 color;float specular;float shininess; float reflectivity;float ior;float roughness;};
 struct Shape3D{int type;vec4 position;vec4 dimensions;vec4 extra;Material material;};
 struct Hit{vec3 normal;Material material;vec3 point;float distance;vec4 accumulatedColor;};
 
@@ -168,10 +168,10 @@ float SceneSDF(vec3 point,out Material hitMaterial){
 }
 
 Material defaultMaterial(){
-    return Material(vec4(0.75),.5,32.0,0.0,1.0);
+    return Material(vec4(0.75),.5,32.0,0.0,1.0,0.0);
 }
 Material backgroundMaterial(){
-    return Material(vec4(0.0),1.0,1.0,0.0,1.0);
+    return Material(vec4(0.0),1.0,1.0,0.0,1.0,0.0);
 }
 
 float ShadowRay(vec3 origin,vec3 dir,float maxDist,Light light){

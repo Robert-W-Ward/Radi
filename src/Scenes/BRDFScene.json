@@ -1,0 +1,43 @@
+{
+    "Camera": {
+        "position": { "x": 0.0, "y": 0.0, "z": 5.0 },
+        "lookAt": { "x": 0.0, "y": 0.0, "z": 0.0 },
+        "up": { "x": 0.0, "y": 1.0, "z": 0.0 },
+        "fov": 45.0,
+        "aspectRatio": 1.0,
+        "focusDistance": 5.0,
+        "aperture": 0.005
+      },
+    "Materials": [
+      {
+        "ID": "mat1",
+        "Type": "Lambertian",
+        "Color": {"r": 1.0, "g": 0.5, "b": 0.5, "a": 1.0},
+        "Albedo": 1.0
+      }
+    ],
+    "Objects": [
+        {
+          "type": "Sphere",
+          "position": { "x": 0.0, "y": 0.0, "z": 0.0 },
+          "scale": { "x": 1.0, "y": 1.0, "z": 1.0 },
+          "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 },
+          "materialId": 1
+        }
+      ],
+      "Lights": [
+        {
+          "type": "PointLight",
+          "position": { "x": 0.0, "y": 5.0, "z": 0.0 },
+          "color": { "r": 1.0, "g": 1.0, "b": 0.0, "a": 1.0 },
+          "intensity": 1.0
+        },
+        {
+          "type": "DirectionalLight",
+          "direction": { "x": 0.0, "y": -1.0, "z": 0.0 },
+          "color": { "r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0 },
+          "intensity": 1.0
+        }
+      ]
+  }
+  
