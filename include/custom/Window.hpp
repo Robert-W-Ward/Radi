@@ -6,50 +6,48 @@
 namespace Radi::Types{
     class Window {
     public:
-        Window(int width, int height, const char* title);
-        ~Window();
+        Window(const Window&) = delete;
+        Window& operator=(const Window&) = delete;
 
         bool Initialize();
         bool ShouldClose() const;
         void SwapBuffers();
         void PollEvents();
 
-        // Callback setters
-        void SetFramebufferSizeCallback(GLFWframebuffersizefun callback);
-        void SetMouseCursorPosCallback(GLFWcursorposfun callback);
-        void SetScrollCallBack(GLFWscrollfun callback);
-        void SetKeyPressCallback(GLFWkeyfun callback);
+        typedef std::function<void(int,int)> FramebufferSizeCallback;
+        typedef std::function<void(double,double)> MoveMouseCallback;
+        typedef std::function<void(double,double)> ScrollWhellCallback;
+        typedef std::function<void(int,int,int,int)> KeyPressCallback;
 
-        void SetCamera(Camera* camera);
-        void SetActiveShader(Shader* shader);
-        // Input handling
-        void ProcessInput(float deltaTime );
+        std::vector<FramebufferSizeCallback> framebufferSizeCallbacks;
+        std::vector<MoveMouseCallback> moveMouseCallbacks;
+        std::vector<ScrollWhellCallback> scrollCallbacks;
+        std::vector<KeyPressCallback> keyCallbacks;
 
+        // Register callbacks
+        void RegisterFramebufferSizeCallback(const FramebufferSizeCallback& callback);
+        void RegisterMouseCursorPosCallback(const MoveMouseCallback& callback);
+        void RegisterScrollCallBack(const ScrollWhellCallback& callback);
+        void RegisterKeyPressCallback(const KeyPressCallback& callback);
 
         GLFWwindow* GetGLFWWindow();
+        static Window& Get(){
+            static Window window(1280, 720, "Radi");
+            return window;
+        }
     private:
+        Window(int width, int height, const char* title);
+        ~Window();
         GLFWwindow* glWindow;
+
         int width;
         int height;
         const char* title;
-        Camera* camera;
-        Shader* shader;
+                
         double lastX,lastY;
         bool firstMouse;
         bool motionBlurActive;
         // Prevent copying
-        Window(const Window&) = delete;
-        Window& operator=(const Window&) = delete;
-        std::map<int,bool> keyStates;
-        static void FramebufferSizeCallback(GLFWwindow* window, int width, int height);
-        static void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
-        static void ScrollCallback(GLFWwindow* window,double xoffset, double yoffset);
-        static void KeyPressCallback(GLFWwindow* window, int key,int scancode, int action, int mods);
-        
-        void ProcessCameraMovement(float deltaTime);
-        void ProcessMouseMovement(double xpos,double ypos);
-        void ProcessScrollWheel(double xoffset,double yoffset);
-        void ProcessKeyPress(int key,bool isPressed);
     };
 }
 

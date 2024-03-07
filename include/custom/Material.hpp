@@ -4,11 +4,11 @@
 namespace Radi::Types
 {
     struct alignas(16) Material{
-        alignas(16) glm::vec4 color;
-        float specular;
+        glm::vec3 ambient;
+        glm::vec3 diffuse;
+        glm::vec3 specular;
         float shininess;
-        float reflectivity;
-        float ior;
-    };
 
+        static Material* createFromJson(nlohmann::json matJson){return new Material();};
+    };
 } 

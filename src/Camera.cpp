@@ -4,12 +4,18 @@
 #include <iostream>
 namespace Radi::Types{
 
+    
     glm::mat4 Camera::GetViewMatrix()const{
         return glm::lookAt(Position, Position + Front, Up);
     }
     glm::mat4 Camera::GetProjectionMatrix(float width, float height) const{
         return glm::perspective(glm::radians(Zoom), width / height, 0.1f, 100.0f);
     }
+
+    Camera* Camera::createFromJson(nlohmann::json cameraJson) {
+        return new Camera();
+    }
+
     Camera::Camera() {
         Position = glm::vec3(0.0f, 0.0f, 3.0f);
         WorldUp = Up = glm::vec3(0.0f, 1.0f, 0.0f);

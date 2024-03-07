@@ -1,12 +1,19 @@
 // Camera.hpp
 #pragma once
-#include "GLFW/glfw3.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
+#include <nlohmann/json.hpp>
+#include "Object.hpp"
 namespace Radi::Types {
-    class Camera {
+    enum Direction {
+        FORWARD,
+        BACKWARD,
+        LEFT,
+        RIGHT
+    };
+    class Camera : Object {
         public:
+            // TODO: change camera movement to use transform matrix instead of position
             glm::vec3 Position;
             glm::vec3 Front;
             glm::vec3 Up;
@@ -21,6 +28,7 @@ namespace Radi::Types {
             float aperture;
             float focusDistance;
             Camera();
+            static Camera* createFromJson(nlohmann::json objJson);
 
             glm::mat4 GetViewMatrix() const;
             glm::mat4 GetProjectionMatrix(float width, float height) const;
@@ -30,6 +38,9 @@ namespace Radi::Types {
             void ProcessFOVChange(double xoffset,double yoffset);
             void ProcessApertureChange(double xoffset,double yoffset);
             void UpdateCameraVectors();
+            void SetAspectRatio(float ratio);
+        private:
+            float aspectRatio;
     };
 
 }

@@ -85,23 +85,10 @@ void Radi::Types::Shader::use() {
     glUseProgram(ID);
 }
 
+
+
 void Radi::Types::Shader::setBool(const std::string& name, bool value) const {
     glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value);
-}
-
-void Radi::Types::Shader::setInt(const std::string& name, int value) {
-    glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
-    uniformIntegers[name] = value;
-}
-
-int Radi::Types::Shader::getInt(const std::string&name )const{
-    auto it = uniformIntegers.find(name);
-    if(it != uniformIntegers.end()){
-        return it->second;
-    }else{
-        std::cerr << "Uniform '"<<name << "' not found or not set yet. \n";
-        return 0;
-    }
 }
 bool Radi::Types::Shader::getBool(const std::string&name) const{
     auto it = uniformIntegers.find(name);
@@ -113,8 +100,19 @@ bool Radi::Types::Shader::getBool(const std::string&name) const{
     }
 
 }
-
-
+void Radi::Types::Shader::setInt(const std::string& name, int value) {
+    glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
+    uniformIntegers[name] = value;
+}
+int Radi::Types::Shader::getInt(const std::string&name )const{
+    auto it = uniformIntegers.find(name);
+    if(it != uniformIntegers.end()){
+        return it->second;
+    }else{
+        std::cerr << "Uniform '"<<name << "' not found or not set yet. \n";
+        return 0;
+    }
+}
 void Radi::Types::Shader::setFloat(const std::string& name, float value)const {
     glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
 }

@@ -1,14 +1,15 @@
  #pragma once
  #include <glm/glm.hpp>
+ #include <nlohmann/json.hpp>
+ #include "Object.hpp"
  namespace Radi::Types
  {
-     struct Light{
+     struct Light : Object{
         int type;
-        alignas(16) glm::vec4 position;
-        alignas(16) glm::vec4 direction;
-        alignas(16) glm::vec4 color;
-        alignas(16) glm::vec4 dimensions;
         float intensity;
+        alignas(16) glm::vec4 color;
+
+        static Light* createFromJson(nlohmann::json lightJson);
     };
  } 
  
