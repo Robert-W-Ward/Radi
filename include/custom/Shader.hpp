@@ -11,6 +11,7 @@
 namespace Radi::Types {
     struct Shader {
         unsigned int ID;
+        unsigned int VAO,VBO;
         std::map<std::string, int> uniformIntegers;
         Shader(const char* vertexPath, const char* fragmentPath);
         void use();
@@ -23,5 +24,6 @@ namespace Radi::Types {
         void setVec2(const std::string& name, const glm::vec2 &value) const;
         void setMat4(const std::string& name, const glm::mat4 &value)const;
         void setUniformBlockBinding(const std::string& blockName, GLuint bindingPoint) const;
+        void setUpFullscreenQuad();
     };
 }

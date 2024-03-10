@@ -26,7 +26,7 @@ const int VIEWPORT_Y = 1080/2;
 const int WINDOW_X = 1920/2;
 const int WINDOW_Y = 1080/2;
 const int aspectRatio = static_cast<float>(WINDOW_X)/ static_cast<float>(WINDOW_Y);
-void setupFullscreenQuad(unsigned int &VAO, unsigned int &VBO);
+void setUpFullscreenQuad(unsigned int &VAO, unsigned int &VBO);
 
 bool isDebug = false;
 int main() {
@@ -43,14 +43,15 @@ int main() {
     }
 
     // Create shader
-    std::unique_ptr<Radi::Types::Shader> shader = std::make_unique<Radi::Types::Shader>((PROJECT_ROOT + "\\Shaders\\raymarch.vert").c_str(), (PROJECT_ROOT + "\\shaders\\raymarch.frag").c_str());
-    // Load scene
+    std::unique_ptr<Radi::Types::Shader> shader = std::make_unique<Radi::Types::Shader>(
+        (PROJECT_ROOT + "\\Shaders\\raymarch.vert").c_str(), 
+        (PROJECT_ROOT + "\\shaders\\raymarch2.frag").c_str());
+    //shader->setUpFullscreenQuad();
+    // Create, load and configure the scene
     Radi::Types::Scene* scene = new Radi::Types::Scene();
-
-    scene->LoadSceneFromFile((PROJECT_ROOT + "\\Scenes\\Scene4.json").c_str());
+    scene->LoadSceneFromFile((PROJECT_ROOT + "\\Scenes\\BRDFScene.json").c_str());
     scene->SetActiveShader(std::move(shader));
-    scene->SetRenderingMethod(Radi::Types::RenderingMethod::RayTraced);
-
+    scene->Configure();
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
@@ -59,11 +60,6 @@ int main() {
 
     bool gKeyWasPressed = false;
 
-    // shader.setBool("motionBlurActive",false);
-    // shader.use();
-    // shader.setFloat("aspectRatio",aspectRatio);
-    // shader.setFloat("VP_X",VIEWPORT_X);
-    // shader.setFloat("VP_Y",VIEWPORT_Y);
 
     // Main loop
     while (!window.ShouldClose()) {
@@ -72,31 +68,23 @@ int main() {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        // Input handling
-        window.PollEvents();
-
+        // Process changes from input events
         scene->ProcessInput(deltaTime);
+        // Update data on CPU side and transfer to GPU
         scene->Update(deltaTime);
-
         // Render commands...
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-        //glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES,0,6);
-        glBindVertexArray(0);
+        glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+        
+        scene->Render();
+        // glBindVertexArray(scene->GetActiveShader()->VAO);
+        // glDrawArrays(GL_TRIANGLES,0,6);
+        // glBindVertexArray(0);
 
         // Swap buffers and poll IO events
         window.SwapBuffers();
+        window.PollEvents();
     }
-
-        // Cleanup is handled by the Window class destructor
-        return 0;
+    return 0;
 }
-
-
-
-
-
-
-

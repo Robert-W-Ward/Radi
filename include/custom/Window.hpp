@@ -8,6 +8,10 @@ namespace Radi::Types{
     public:
         Window(const Window&) = delete;
         Window& operator=(const Window&) = delete;
+        static Window& Get(){
+            static Window window(1280, 720, "Radi");
+            return window;
+        }
 
         bool Initialize();
         bool ShouldClose() const;
@@ -31,23 +35,17 @@ namespace Radi::Types{
         void RegisterKeyPressCallback(const KeyPressCallback& callback);
 
         GLFWwindow* GetGLFWWindow();
-        static Window& Get(){
-            static Window window(1280, 720, "Radi");
-            return window;
-        }
     private:
         Window(int width, int height, const char* title);
         ~Window();
         GLFWwindow* glWindow;
-
+        bool initialized;
         int width;
         int height;
         const char* title;
-                
         double lastX,lastY;
         bool firstMouse;
         bool motionBlurActive;
-        // Prevent copying
     };
 }
 

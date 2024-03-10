@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <nlohmann/json.hpp>
-#include "Object.hpp"
+#include "GLFW/glfw3.h"
 namespace Radi::Types {
     enum Direction {
         FORWARD,
@@ -11,36 +11,51 @@ namespace Radi::Types {
         LEFT,
         RIGHT
     };
-    class Camera : Object {
-        public:
-            // TODO: change camera movement to use transform matrix instead of position
-            glm::vec3 Position;
-            glm::vec3 Front;
-            glm::vec3 Up;
-            glm::vec3 Right;
-            glm::vec3 WorldUp;
+    struct Camera {
+        // TODO: change camera movement to use transform matrix instead of position
+        glm::vec3 Position;
+        glm::vec3 Front;
+        glm::vec3 Up;
+        glm::vec3 Right;
+        glm::vec3 WorldUp;
+        float fov;
+        float aspectRatio;
+        float focuseDistance;
+        float aperture;
 
-            float Yaw;
-            float Pitch;
-            float MovementSpeed;
-            float MouseSensitivity;
-            float Zoom;
-            float aperture;
-            float focusDistance;
-            Camera();
-            static Camera* createFromJson(nlohmann::json objJson);
-
-            glm::mat4 GetViewMatrix() const;
-            glm::mat4 GetProjectionMatrix(float width, float height) const;
-
-            void ProcessKeyboard(int direction, float deltaTime);
-            void ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch);
-            void ProcessFOVChange(double xoffset,double yoffset);
-            void ProcessApertureChange(double xoffset,double yoffset);
-            void UpdateCameraVectors();
-            void SetAspectRatio(float ratio);
-        private:
-            float aspectRatio;
+        static Camera* createFromJson(nlohmann::json objJson){
+            Camera* cam = new Camera();
+            cam->Position = glm::vec3(
+                objJson["position"]["x"].get<float>(),
+                objJson["position"]["y"].get<float>(),
+                objJson["position"]["z"].get<float>()
+            );
+            cam->Front = glm::vec3(
+                objJson["front"]["x"].get<float>(),
+                objJson["front"]["y"].get<float>(),
+                objJson["front"]["z"].get<float>()
+            );
+            cam->Up = glm::vec3(
+                objJson["up"]["x"].get<float>(),
+                objJson["up"]["y"].get<float>(),
+                objJson["up"]["z"].get<float>()
+            );
+            cam->Right = glm::vec3(
+                objJson["right"]["x"].get<float>(),
+                objJson["right"]["y"].get<float>(),
+                objJson["right"]["z"].get<float>()
+            );
+            cam->WorldUp = glm::vec3(
+                objJson["worldUp"]["x"].get<float>(),
+                objJson["worldUp"]["y"].get<float>(),
+                objJson["worldUp"]["z"].get<float>()
+            );
+            cam->fov = objJson["fov"].get<float>();
+            cam->aspectRatio = objJson["aspectRatio"].get<float>();
+            cam->focuseDistance = objJson["focusDistance"].get<float>();
+            cam->aperture = objJson["aperture"].get<float>();
+            return cam;
+        };
     };
 
 }

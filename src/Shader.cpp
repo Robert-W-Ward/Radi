@@ -7,7 +7,8 @@ Radi::Types::Shader::Shader(const char* vertexPath, const char* fragmentPath) {
 	std::string fragmentCode;
 	std::ifstream vShaderFile;
 	std::ifstream fShaderFile;
-
+    VAO = 0;
+    VBO = 0;
 	// ensure ifstream objects can throw exceptions:
 	vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -137,4 +138,29 @@ void Radi::Types::Shader::setUniformBlockBinding(const std::string& blockName, G
 
     // Bind the uniform block to the specified uniform buffer binding point
     glUniformBlockBinding(ID, blockIndex, bindingPoint);
+}
+void Radi::Types::Shader::setUpFullscreenQuad(){
+         float vertices[] = {
+         // positions
+         -1.0f,  1.0f, 0.0f, // Top Left
+         -1.0f, -1.0f, 0.0f, // Bottom Left
+         1.0f, -1.0f, 0.0f, // Bottom Right
+         -1.0f,  1.0f, 0.0f, // Top Left
+         1.0f, -1.0f, 0.0f, // Bottom Right
+         1.0f,  1.0f, 0.0f  // Top Right
+      };
+
+      glGenVertexArrays(1, &VAO);
+      glGenBuffers(1, &VBO);
+
+      glBindVertexArray(VAO);
+      glBindBuffer(GL_ARRAY_BUFFER, VBO);
+      glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+      // Position attribute
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+      glEnableVertexAttribArray(0);
+
+      glBindBuffer(GL_ARRAY_BUFFER, 0); 
+      glBindVertexArray(0);  
 }

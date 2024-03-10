@@ -11,6 +11,8 @@ namespace Radi::Types
     }
     bool Window::Initialize()
     {
+        if(initialized) return true;
+
         if (!glfwInit())
         {
             std::cerr << "Failed to initialize GLFW\n";
@@ -40,7 +42,8 @@ namespace Radi::Types
         }
 
         glfwSetInputMode(glWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
+        
+        initialized = true;
         return true;
     }
     bool Window::ShouldClose() const
