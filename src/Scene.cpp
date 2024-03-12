@@ -28,13 +28,13 @@ namespace Radi::Types {
       std::cout<<"Key pressed: "<<key<<std::endl;
    }
 
-   std::vector<Primative*> Scene::GetObjects(){
+   std::vector<Primative> Scene::GetObjects(){
       return this->objects;
    }
-   std::vector<Light*> Scene::GetLights(){
+   std::vector<Light> Scene::GetLights(){
       return this->lights;
    }
-   std::vector<Material*> Scene::GetMaterials(){
+   std::vector<Material> Scene::GetMaterials(){
       return this->materials;
    }
    
@@ -73,10 +73,10 @@ namespace Radi::Types {
       }
 
       // Parse objects
-      if (sceneJson.contains("objects")) {
-         for (const auto& objJson : sceneJson["objects"]) {
+      if (sceneJson.contains("primatives")) {
+         for (const auto& objJson : sceneJson["primatives"]) {
                // Assume Object::createFromJson is a static method that creates an Object* from JSON
-               objects.push_back(Primative::createFromJson(objJson));
+               objects.push_back(*Primative::createFromJson(objJson));
          }
       }
 
@@ -84,7 +84,7 @@ namespace Radi::Types {
       if (sceneJson.contains("lights")) {
          for (const auto& lightJson : sceneJson["lights"]) {
                // Similar to Object, assuming a createFromJson method for Light
-               lights.push_back(Light::createFromJson(lightJson));
+               lights.push_back(*Light::createFromJson(lightJson));
          }
       }
 
@@ -92,7 +92,7 @@ namespace Radi::Types {
       if (sceneJson.contains("materials")) {
          for (const auto& matJson : sceneJson["materials"]) {
                // Assuming Material::createFromJson exists
-               materials.push_back(Material::createFromJson(matJson));
+               materials.push_back(*Material::createFromJson(matJson));
          }
       }
 
@@ -114,7 +114,7 @@ namespace Radi::Types {
       glBindBufferBase(GL_SHADER_STORAGE_BUFFER,1,matSSBO);
       glBindBuffer(GL_SHADER_STORAGE_BUFFER,0);
 
-      // Upload Light data
+      // // Upload Light data
       glGenBuffers(1,&lightSSBO);
       glBindBuffer(GL_SHADER_STORAGE_BUFFER,lightSSBO);
       glBufferData(GL_SHADER_STORAGE_BUFFER,sizeof(Light) * lights.size(),lights.data(),GL_STATIC_DRAW);

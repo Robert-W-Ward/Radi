@@ -23,9 +23,9 @@ namespace Radi::Types
 			Scene();
 			~Scene();
 
-			std::vector<Primative*> GetObjects();
-			std::vector<Light*> GetLights();
-			std::vector<Material*> GetMaterials();
+			std::vector<Primative> GetObjects();
+			std::vector<Light> GetLights();
+			std::vector<Material> GetMaterials();
 
 			RenderingMethod GetRenderingMethod();
 			void SetRenderingMethod(RenderingMethod method);
@@ -47,9 +47,9 @@ namespace Radi::Types
 			Window& window = Window::Get();
 			RenderingMethod renderingMethod;
 			std::unique_ptr<Shader> shader;
-			std::vector<Primative*> objects;
-			std::vector<Material*> materials;
-			std::vector<Light*> lights;
+			std::vector<Primative> objects;
+			std::vector<Material> materials;
+			std::vector<Light> lights;
 			GLuint objSSBO;
 			GLuint matSSBO;
 			GLuint lightSSBO;

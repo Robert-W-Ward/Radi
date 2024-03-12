@@ -5,7 +5,6 @@
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp> 
 #include <nlohmann/json.hpp>
-#include "Material.hpp"
 namespace Radi::Types {
 
 	enum Shape {
@@ -15,13 +14,13 @@ namespace Radi::Types {
         Plane
     };
 
-	struct Primative {
+	struct alignas(16) Primative {
 		Shape shape;
-		glm::vec4 position;
-		glm::vec4 scale;
-		glm::vec4 rotation;
-		std::shared_ptr<Material> material;
-		std::vector<glm::vec3> mesh;
+		alignas(16) glm::vec4 position;
+		alignas(16) glm::vec4 scale;
+		alignas(16) glm::vec4 rotation;
+		int materialId;
+		// std::vector<glm::vec3> mesh;
 
 		void createMesh();
 		static Primative* createFromJson(nlohmann::json objJson){
@@ -51,6 +50,7 @@ namespace Radi::Types {
 				objJson["rotation"]["z"].get<float>(),
 				objJson["rotation"]["w"].get<float>()
 			);
+			primative->materialId = objJson["materialId"].get<int>();
 			return primative;
 		}
 	};	

@@ -15,14 +15,14 @@ float virtualTime;
 vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
 struct Material{
     int id;
-    // int type;
-    // vec4 ambient;
-    // vec4 diffuse;
-    // vec4 specular;
-    // vec4 color;
-    // float shininess;
-    // float albedo;
-    // float reflectivity;
+    int type;
+    vec4 color;
+    vec4 ambient;
+    vec4 diffuse;
+    vec4 specular;
+    float shininess;
+    float albedo;
+    float reflectivity;
 };
 struct Primative{
     int shape;
@@ -52,15 +52,16 @@ struct Hit{
 };
 struct Light{
     int type;
-    vec4 position;
-    vec4 direction;
+    int shape;
     vec4 color;
-    vec4 dimensions;
+    vec3 position;
+    vec3 scale;
+    vec3 rotation;
     float intensity;
 };
 
 layout(std430, binding = 0) buffer PrimativeBuffer{ 
-    Primative objs[];
+    Primative primatives[];
 };
 layout(std430, binding = 1) buffer MaterialBuffer{
     Material materials[];
@@ -91,16 +92,15 @@ vec3 getRayDir(vec2 screenCoords){
     return normalize(camRight*screenPos.x + camUp * screenPos.y + camDir);
 }
 void main() {
-    FragColor = vec4(0.0, 1.0, 0.0, 1.0);
-    return;
-    //screen setup
-    vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
-    vec3 ro = camPos;
-    vec3 rd = getRayDir(screenCoords);
-    if(VP_X > 0.0){
-        FragColor = vec4(0.0, 1.0, 0.0, 1.0);
-    }else{
-        FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-    }
-    FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    FragColor = vec4(lights[0].intensity);
+    // //screen setup
+    // vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
+    // vec3 ro = camPos;
+    // vec3 rd = getRayDir(screenCoords);
+    // if(VP_X > 0.0){
+    //     FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+    // }else{
+    //     FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    // }
+    // FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }   

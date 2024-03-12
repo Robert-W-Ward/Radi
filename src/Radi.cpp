@@ -78,9 +78,6 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
         scene->Render();
-        // glBindVertexArray(scene->GetActiveShader()->VAO);
-        // glDrawArrays(GL_TRIANGLES,0,6);
-        // glBindVertexArray(0);
 
         // Swap buffers and poll IO events
         window.SwapBuffers();

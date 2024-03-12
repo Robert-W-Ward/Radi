@@ -10,14 +10,14 @@
         Directional
     
     };
-     struct Light {
+    struct alignas(16) Light {
         LightType type;
         Shape shape;
-        glm::vec3 position;
-        glm::vec3 scale;
-        glm::vec3 rotation;
+        alignas(16) glm::vec4 color;
+        alignas(16) glm::vec3 position;
+        alignas(16) glm::vec3 scale;
+        alignas(16) glm::vec3 rotation;
         float intensity;
-        glm::vec4 color;
 
         static Light* createFromJson(nlohmann::json lightJson){
             Light* light = new Light();
@@ -36,8 +36,13 @@
             };
             light->shape = shapeMap[lightJson["shape"].get<std::string>()];
 
+            light->color = glm::vec4(
+                lightJson["color"]["r"].get<float>(),
+                lightJson["color"]["g"].get<float>(),
+                lightJson["color"]["b"].get<float>(),
+                lightJson["color"]["a"].get<float>()
+            );
 
-            
             light->position = glm::vec3(
                 lightJson["position"]["x"].get<float>(),
                 lightJson["position"]["y"].get<float>(),
