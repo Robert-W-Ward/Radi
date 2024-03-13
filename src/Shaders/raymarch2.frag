@@ -157,7 +157,9 @@ float SphereSDF(vec3 point, vec3 center, vec3 scale, vec3 rotationDegrees, vec3 
     float distance = length(localPoint - center) - 1.0;
     return distance;
 }
-
+float PlaneSDF(vec3 point, vec3 normal, float height, out int materialId){
+    return dot(point,normal) + height;
+}
 
 float SceneSDF(vec3 point,out int materialId){
     //Loop over all shapes and return the minimum distance
@@ -220,16 +222,72 @@ void rayMarch(vec3 rayOrigin, vec3 rayDir,float maxDist, float minDist,out Hit h
 }
 
 
-vec3 diffuseBRDF(Hit hit){
+vec3 diffuseBRDF(Hit hit) {
     vec3 diffuseColor = vec3(0.0);
-    for(int i = 0; i < lights.length(); ++i){
-        Light light = lights[i];
-        vec3 lightDir = normalize(light.position - hit.point);
-        float diff = max(dot(hit.normal, lightDir), 0.0);
-        diffuseColor += light.color.xyz * diff * light.intensity;
+    Material material = materials[hit.materialId];
+
+    diffuseColor = material.diffuse.xyz;
+
+
+    // Direct lighting
+    // for (int i = 0; i < lights.length(); ++i) {
+    //     Light light = lights[i];
+    //     vec3 lightDir = normalize(light.position - hit.point);
+    //     float diff = max(dot(hit.normal, lightDir), 0.0);
+    //     diffuseColor += material.color.xyz * light.color.xyz * diff;
+    // }
+
+    // Indirect lighting
+    for (int depth = 0; depth < MAX_REFLECTION_DEPTH; ++depth) {
+        // Randomly sample a new ray direction based on the diffuse BRDF
+        vec3 randomDir = normalize(vec3(
+            random(gl_FragCoord.xy + vec2(time, 0.0)) * 2.0 - 1.0,
+            random(gl_FragCoord.xy + vec2(0.0, time)) * 2.0 - 1.0,
+            random(gl_FragCoord.xy + vec2(time, time)) * 2.0 - 1.0
+        ));
+        vec3 newRayDir = normalize(hit.normal + randomDir);
+
+        // Trace the new ray and accumulate the diffuse color contribution
+        Hit newHit;
+        rayMarch(hit.point + newRayDir * 0.001, newRayDir, 100.0, 0.01, newHit);
+
+        if (newHit.distance > 0.0) {
+            diffuseColor *= materials[newHit.materialId].diffuse.xyz;
+            hit = newHit;
+        } else {
+            diffuseColor *= BackgroundColor.xyz; // Background color contribution
+            break; // Exit the loop if the ray doesn't hit any geometry
+        }
     }
+
     return diffuseColor;
 }
+
+
+void main(){
+    vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
+    vec3 finalColor = vec3(0.0);
+    int numSamples = 8;
+    for (int i = 0; i < numSamples; ++i) {
+        vec2 jitter = vec2(random(gl_FragCoord.xy + i * vec2(time, time)), random(gl_FragCoord.xy + i * vec2(time, time) + vec2(12.9898, 78.233))) * 2.0 - 1.0;
+        jitter /= vec2(VP_X, VP_Y);
+        vec3 rayDir = getRayDir(screenCoords + jitter);
+        Hit hit;
+        hit.distance = -1.0;
+        rayMarch(camera.position, rayDir, 100.0, 0.01, hit);
+        if (hit.distance > 0.0) {
+            finalColor += diffuseBRDF(hit); 
+        }
+        else {
+            finalColor += BackgroundColor.xyz;
+        }
+    }
+    FragColor = vec4(finalColor / float(numSamples), 1.0);
+}
+
+
+
+
 
 // void main() {
 //     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
@@ -248,21 +306,3 @@ vec3 diffuseBRDF(Hit hit){
 //     }
 
 // }   
-void main(){
-    vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
-    vec3 finalColor = vec3(0.0);
-    int numSamples = 8;
-    for (int i = 0; i < numSamples; ++i) {
-        vec2 jitter = vec2(random(gl_FragCoord.xy + i * vec2(time, time)), random(gl_FragCoord.xy + i * vec2(time, time) + vec2(12.9898, 78.233))) * 2.0 - 1.0;
-        jitter /= vec2(VP_X, VP_Y);
-        vec3 rayDir = getRayDir(screenCoords + jitter);
-        Hit hit;
-        hit.distance = -1.0;
-        rayMarch(camera.position, rayDir, 100.0, 0.01, hit);
-        if (hit.distance > 0.0) {
-            vec3 diffuse = diffuseBRDF(hit);
-            finalColor += diffuse * materials[hit.materialId].diffuse.xyz;
-        }
-    }
-    FragColor = vec4(finalColor / float(numSamples), 1.0);
-}
