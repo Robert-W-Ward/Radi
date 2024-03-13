@@ -10,16 +10,9 @@ const int MAX_SHAPES = 50;
 #define DIRECTIONAL 997
 #define DISC 996
 
-uniform vec3 camPos;          // Camera position
-uniform vec3 camDir;          // Camera direction
-uniform vec3 camUp;           // Camera up vector
-uniform vec3 camRight;        // Camera right vector
-uniform float camFOV;         // Camera field of view
-uniform float aspectRatio;    // Aspect ratio of the window
-uniform float focusDistance;  // Focus distance from the camera
-uniform float aperture;
 uniform int VP_X;           // Viewport X
 uniform int VP_Y;           // Viewport Y
+
 uniform bool isDebug;
 uniform int u_samplesPerPixel;
 uniform float time;
@@ -51,7 +44,7 @@ struct Primative{
 
 struct Camera{
     vec3 position;
-    vec3 lookAt;
+    vec3 front;
     vec3 up;
     vec3 right;
     vec3 worldUp;
@@ -63,7 +56,7 @@ struct Camera{
 
 struct Hit{
     vec3 normal;
-    Material material;
+    int materialId;
     vec3 point;
     float distance;
     vec4 accumulatedColor;
@@ -129,40 +122,99 @@ vec3 inverseRotate(vec3 point, vec4 rotation) {
     return rotatePointByQuaternion(point, rotationQuat);
 }
 
+float SphereSDF(vec3 point,vec3 center,vec3 scale,vec4 rotation,vec3 translation,out int materialId){
+    // vec3 localPoint = inverseTranslate(point,translation);
+    // localPoint = inverseScale(localPoint, scale);
+    // localPoint = inverseRotate(localPoint,rotation);
 
-float SphereSDF(vec3 point,vec3 center,out Material hitMaterial,vec3 scale,vec4 rotation,vec3 translation){
-    vec3 localPoint = inverseTranslate(point,translation);
-    localPoint = inverseScale(localPoint, scale);
-    localPoint = inverseRotate(localPoint,rotation);
+    float distance = length(point - center) - 1.0;
 
-    float distance = length(localPoint - center) - 1.0;
-
-    Material material = materials[primatives[0].materialId];
+    materialId = primatives[0].materialId;
 
     return distance;
 }
 
+float ssdf(vec3 point, vec3 center ,float radius){
+    return length(point - center) - radius;
+}
 
 
-float SceneSDF(vec3 point,out Material hitMaterial){
-    return SphereSDF(point,vec3(0.0),hitMaterial,vec3(1.0),vec4(0.0),vec3(0.0));
+float SceneSDF(vec3 point,out int materialId){
+    //Loop over all shapes and return the minimum distance
+    float minDistance = 1000000.0;
+    float distance = 1000000.0;
+    for(int i = 0; i < primatives.length(); ++i){
+        int matId;
+        switch(primatives[i].shape){
+            case SPHERE:
+                matId = primatives[i].materialId;
+                distance = SphereSDF(point,primatives[i].position.xyz,primatives[i].scale.xyz,primatives[i].rotation,vec3(0.0),matId);
+            break;
+        }
+        if(distance < minDistance){
+            minDistance = distance;
+            materialId = primatives[i].materialId;
+        }
+    }
+    return minDistance;
 }
 
 
 vec3 getRayDir(vec2 screenCoords){
-    float scale = tan(radians(camFOV*0.5));
+    float scale = tan(radians(camera.fov*0.5));
     vec2 screenPos = screenCoords * scale;
-    screenPos.x *= aspectRatio;
-    return normalize(camRight*screenPos.x + camUp * screenPos.y + camDir);
+    screenPos.x *= camera.aspectRatio;
+    return normalize(camera.right*screenPos.x + camera.worldUp * screenPos.y + camera.front);
 }
+vec3 CalculateNormal(vec3 p, float epsilon) {
+    const vec3 dx = vec3(epsilon, 0.0, 0.0);
+    const vec3 dy = vec3(0.0, epsilon, 0.0);
+    const vec3 dz = vec3(0.0, 0.0, epsilon);
+    int m = 0;
+    float d = SceneSDF(p,m);
+    vec3 n = vec3(
+        SceneSDF(p + dx,m) - d,
+        SceneSDF(p + dy,m) - d,
+        SceneSDF(p + dz,m) - d
+    );
+
+    return normalize(n);
+}
+
+void rayMarch(vec3 rayOrigin, vec3 rayDir,float maxDist, float minDist,out Hit hit) {
+    float distanceTraveled = 0.0;
+    int materialId = 0;
+    for(int i = 0; i < 100; ++i){
+        vec3 curPos = rayOrigin + rayDir * distanceTraveled;
+        float nearestDist = SceneSDF(curPos,materialId);
+        if(nearestDist < minDist){
+            hit.distance = distanceTraveled;
+            hit.point = curPos;
+            hit.normal = CalculateNormal(curPos,0.001);
+            hit.materialId = materialId;
+            break;
+        }
+        distanceTraveled += nearestDist;
+        if(distanceTraveled > maxDist)break;
+    }
+}
+
+
 void main() {
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
-    // if(camera.aperture > 0.0){
-    //     FragColor = vec4(0.0,1.0,0.0,1.0);
-    //     return;
-    // }else{
-    //     FragColor = vec4(1.0,0.0,0.0,1.0);
-    //     return ;
-    // }
-    FragColor = vec4(screenCoords, 0.0, 1.0);
+    vec3 rayOrigin = vec3(0.0);
+    vec3 rayDir = getRayDir(screenCoords);
+    Hit hit;
+    hit.distance = -1.0;
+    rayMarch(rayOrigin, rayDir, 100.0, 0.01, hit);
+    
+    if(hit.distance > 0.0){
+        FragColor = vec4(materials[hit.materialId].color.xyz,1.0);
+        //FragColor = materials[hit.materialId].color; // Material color visualization
+
+    }
+    else{
+        FragColor = BackgroundColor;
+    }
+
 }   
