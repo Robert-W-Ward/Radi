@@ -88,6 +88,16 @@ layout(std430, binding = 2) buffer LightBuffer{
 layout(std430, binding = 3) buffer CameraBuffer{
     Camera camera;
 };
+Quaternion axisAngleToQuaternion(vec3 axis, float angleDeg) {
+    float angleRad = angleDeg * 3.1415926535897932384626433832795 / 180.0; // Convert to radians
+    vec3 normalizedAxis = normalize(axis); // Ensure the axis is normalized
+    float s = sin(angleRad / 2.0);
+
+    return Quaternion(
+        cos(angleRad / 2.0), // w
+        normalizedAxis * s // xyz
+    );
+}
 
 Quaternion quatMultiply(Quaternion q1,Quaternion q2){
     return Quaternion(
@@ -105,9 +115,11 @@ Quaternion quatNormalize(Quaternion q){
 
 vec3 rotatePointByQuaternion(vec3 point, Quaternion q) {
     Quaternion p = Quaternion(0, point);
-    q = quatNormalize(q);
-    Quaternion qInv = quatConjugate(q);
-    Quaternion pRot = quatMultiply(quatMultiply(p, q), qInv);
+    Quaternion qInv = Quaternion(q.w, -q.xyz); 
+    float len = sqrt(q.w * q.w + dot(q.xyz, q.xyz));
+    q = Quaternion(q.w / len, q.xyz / len);
+
+    Quaternion pRot = quatMultiply(quatMultiply(q, p), qInv);
     return pRot.xyz;
 }
 
@@ -117,25 +129,27 @@ vec3 inverseTranslate(vec3 point,vec3 translation){
 vec3 inverseScale(vec3 point,vec3 scale){
     return point / scale;
 }
-vec3 inverseRotate(vec3 point, vec4 rotation) {
-    Quaternion rotationQuat = Quaternion(rotation.w, rotation.xyz);
-    return rotatePointByQuaternion(point, rotationQuat);
+vec3 inverseRotate(vec3 point, vec3 rotationDegrees) {
+    // Convert rotation angles from degrees to quaternions for each axis
+    Quaternion rotX = axisAngleToQuaternion(vec3(1, 0, 0), rotationDegrees.x);
+    Quaternion rotY = axisAngleToQuaternion(vec3(0, 1, 0), rotationDegrees.y);
+    Quaternion rotZ = axisAngleToQuaternion(vec3(0, 0, 1), rotationDegrees.z);
+
+    // Combine rotations, order matters (here we use ZYX)
+    Quaternion combinedRotation = quatMultiply(quatMultiply(rotZ, rotY), rotX);
+
+    // Rotate the point by the combined rotation quaternion
+    return rotatePointByQuaternion(point, combinedRotation);
 }
 
-float SphereSDF(vec3 point,vec3 center,vec3 scale,vec4 rotation,vec3 translation,out int materialId){
-    // vec3 localPoint = inverseTranslate(point,translation);
+float SphereSDF(vec3 point, vec3 center, vec3 scale, vec3 rotationDegrees, vec3 translation, out int materialId) {
+    vec3 localPoint = point;
+    // TODO: translate, scale, rotate
+    // localPoint = inverseTranslate(localPoint,translation);
     // localPoint = inverseScale(localPoint, scale);
-    // localPoint = inverseRotate(localPoint,rotation);
-
-    float distance = length(point - center) - 1.0;
-
-    materialId = primatives[0].materialId;
-
+    // localPoint = inverseRotate(localPoint, rotationDegrees);
+    float distance = length(localPoint - center) - 1.0;
     return distance;
-}
-
-float ssdf(vec3 point, vec3 center ,float radius){
-    return length(point - center) - radius;
 }
 
 
@@ -148,7 +162,7 @@ float SceneSDF(vec3 point,out int materialId){
         switch(primatives[i].shape){
             case SPHERE:
                 matId = primatives[i].materialId;
-                distance = SphereSDF(point,primatives[i].position.xyz,primatives[i].scale.xyz,primatives[i].rotation,vec3(0.0),matId);
+                distance = SphereSDF(point,primatives[i].position.xyz,primatives[i].scale.xyz,primatives[i].rotation.xyz,vec3(0.0),matId);
             break;
         }
         if(distance < minDistance){
@@ -211,7 +225,6 @@ void main() {
     if(hit.distance > 0.0){
         FragColor = vec4(materials[hit.materialId].color.xyz,1.0);
         //FragColor = materials[hit.materialId].color; // Material color visualization
-
     }
     else{
         FragColor = BackgroundColor;

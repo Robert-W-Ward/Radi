@@ -13,8 +13,8 @@
 
 const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
 
-const int WINDOW_X = 1920/2;
-const int WINDOW_Y = 1080/2;
+const int WINDOW_X = 1920;
+const int WINDOW_Y = 1080;
 
 bool isDebug = false;
 int main() {
