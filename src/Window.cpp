@@ -33,6 +33,7 @@ namespace Radi::Types
         }
 
         glfwMakeContextCurrent(glWindow);
+        glfwSetFramebufferSizeCallback(glWindow, Window::FramebufferSizeCallbackBridge);
         glfwSetWindowUserPointer(glWindow, this); // Set user pointer to the Window instance
 
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -62,7 +63,6 @@ namespace Radi::Types
     {
         return this->glWindow;
     }
-
     void Window::RegisterFramebufferSizeCallback(const FramebufferSizeCallback &callback)
     {
         framebufferSizeCallbacks.push_back(callback);
@@ -78,14 +78,6 @@ namespace Radi::Types
     void Window::RegisterKeyPressCallback(const KeyPressCallback &callback)
     {
         keyCallbacks.push_back(callback);
-    }
-    static void FramebufferSizeCallback(GLFWwindow *window, int width, int height)
-    {
-        Window *windowInstance = (Window *)glfwGetWindowUserPointer(window);
-        for (auto &callback : windowInstance->framebufferSizeCallbacks)
-        {
-            callback(width, height);
-        }
     }
     static void MoveMouseCallback(GLFWwindow *window, double xpos, double ypos)
     {

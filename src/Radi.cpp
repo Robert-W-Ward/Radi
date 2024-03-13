@@ -11,30 +11,17 @@
 #include "Material.hpp"
 #include "nlohmann/json.hpp"
 
-#define SPHERE 0
-#define BOX 1
-#define TRIANGLE 2
-#define PLANE 3
-
-#define POINT_LIGHT 999
-#define AREA_LIGHT 998
-#define DIRECTIONAL_LIGHT 997
-#define DISCT_LIGHT 996
 const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
-const int VIEWPORT_X = 1920/2;
-const int VIEWPORT_Y = 1080/2;
+
 const int WINDOW_X = 1920/2;
 const int WINDOW_Y = 1080/2;
-const int aspectRatio = static_cast<float>(WINDOW_X)/ static_cast<float>(WINDOW_Y);
-void setUpFullscreenQuad(unsigned int &VAO, unsigned int &VBO);
 
 bool isDebug = false;
 int main() {
     const char* windowTitle = "Radi";
-//        Radi::Types::Window window(WINDOW_X, WINDOW_Y, windowTitle);
 
     // Create Window instance and context
-    auto& window = Radi::Types::Window::Get();
+    auto& window = Radi::Types::Window::Get(WINDOW_X,WINDOW_Y,windowTitle);
 
     // Initialize the window and OpenGL context
     if (!window.Initialize()) {
@@ -46,7 +33,11 @@ int main() {
     std::unique_ptr<Radi::Types::Shader> shader = std::make_unique<Radi::Types::Shader>(
         (PROJECT_ROOT + "\\Shaders\\raymarch.vert").c_str(), 
         (PROJECT_ROOT + "\\shaders\\raymarch2.frag").c_str());
+    shader->use();
+    shader->setInt("VP_X", WINDOW_X);
+    shader->setInt("VP_Y", WINDOW_Y);
     //shader->setUpFullscreenQuad();
+
     // Create, load and configure the scene
     Radi::Types::Scene* scene = new Radi::Types::Scene();
     scene->LoadSceneFromFile((PROJECT_ROOT + "\\Scenes\\BRDFScene.json").c_str());

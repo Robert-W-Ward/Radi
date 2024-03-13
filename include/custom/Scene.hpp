@@ -43,6 +43,7 @@ namespace Radi::Types
 			void Configure();
 
 			void OnKeyPress(int key, int scancode, int action, int mods);
+			void OnResize(int width, int height);
 		private:
 			Window& window = Window::Get();
 			RenderingMethod renderingMethod;
@@ -53,5 +54,6 @@ namespace Radi::Types
 			GLuint objSSBO;
 			GLuint matSSBO;
 			GLuint lightSSBO;
+			GLuint cameraSSBO;
 	};
 }

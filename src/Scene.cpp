@@ -5,6 +5,9 @@ namespace Radi::Types {
        window.RegisterKeyPressCallback([this](int key, int scancode, int action, int mods) {
           this->OnKeyPress(key, scancode, action, mods);
        });
+      window.RegisterFramebufferSizeCallback([this](int width, int height) {
+         this->OnResize(width, height);
+      });
       // Register callbacks
    }
    Scene::~Scene(){}
@@ -22,6 +25,14 @@ namespace Radi::Types {
          glDrawArrays(GL_TRIANGLES,0,6);
          glBindVertexArray(0);
       }
+   }
+   void Scene::OnResize(int width, int height){
+      // TODO Implement
+      if(shader){
+         shader->setInt("VP_X",width);
+         shader->setInt("VP_Y",height);
+      }
+      std::cout<<"Window resized: "<<width<<"x"<<height<<std::endl;
    }
    void Scene::OnKeyPress(int key, int scancode, int action, int mods) {
       // TODO Implement
@@ -120,6 +131,14 @@ namespace Radi::Types {
       glBufferData(GL_SHADER_STORAGE_BUFFER,sizeof(Light) * lights.size(),lights.data(),GL_STATIC_DRAW);
       glBindBufferBase(GL_SHADER_STORAGE_BUFFER,2,lightSSBO);
       glBindBuffer(GL_SHADER_STORAGE_BUFFER,0);
+
+      // Upload Camera data
+      glGenBuffers(1,&cameraSSBO);
+      glBindBuffer(GL_SHADER_STORAGE_BUFFER,cameraSSBO);
+      glBufferData(GL_SHADER_STORAGE_BUFFER,sizeof(Camera),camera.get(),GL_STATIC_DRAW);
+      glBindBufferBase(GL_SHADER_STORAGE_BUFFER,3,cameraSSBO);
+      glBindBuffer(GL_SHADER_STORAGE_BUFFER,0);
+
    }
 
    void Scene::Configure(){

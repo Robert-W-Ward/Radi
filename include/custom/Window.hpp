@@ -8,8 +8,8 @@ namespace Radi::Types{
     public:
         Window(const Window&) = delete;
         Window& operator=(const Window&) = delete;
-        static Window& Get(){
-            static Window window(1280, 720, "Radi");
+        static Window& Get(int width = 1280, int height = 720, const char* title = "Radi") {
+            static Window window(width, height, title);
             return window;
         }
 
@@ -35,6 +35,18 @@ namespace Radi::Types{
         void RegisterKeyPressCallback(const KeyPressCallback& callback);
 
         GLFWwindow* GetGLFWWindow();
+
+        static void FramebufferSizeCallbackBridge(GLFWwindow *window, int width, int height)
+        {
+            Window *windowInstance = (Window *)glfwGetWindowUserPointer(window);
+
+            // Update viewport to match window
+            glViewport(0, 0, width, height);
+            for (auto &callback : windowInstance->framebufferSizeCallbacks)
+            {
+                callback(width, height);
+            }
+        }
     private:
         Window(int width, int height, const char* title);
         ~Window();

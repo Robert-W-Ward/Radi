@@ -11,13 +11,13 @@ namespace Radi::Types {
         LEFT,
         RIGHT
     };
-    struct Camera {
+    struct alignas(16) Camera {
         // TODO: change camera movement to use transform matrix instead of position
-        glm::vec3 Position;
-        glm::vec3 Front;
-        glm::vec3 Up;
-        glm::vec3 Right;
-        glm::vec3 WorldUp;
+        alignas(16) glm::vec3 Position;
+        alignas(16) glm::vec3 Front;
+        alignas(16) glm::vec3 Up;
+        alignas(16) glm::vec3 Right;
+        alignas(16) glm::vec3 WorldUp;
         float fov;
         float aspectRatio;
         float focuseDistance;
