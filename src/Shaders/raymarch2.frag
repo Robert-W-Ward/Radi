@@ -26,10 +26,10 @@ vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
 struct Material{
     int id;
     int type;
-    vec4 color;
     vec4 ambient;
     vec4 diffuse;
     vec4 specular;
+    vec4 color;
     float shininess;
     float albedo;
     float reflectivity;
@@ -114,6 +114,7 @@ Quaternion quatMultiply(Quaternion q1,Quaternion q2){
 Quaternion quatConjugate(Quaternion q) {
     return Quaternion(q.w, -q.xyz);
 }
+
 Quaternion quatNormalize(Quaternion q){
     float len = sqrt(q.w*q.w + dot(q.xyz, q.xyz));
     return Quaternion(q.w / len, q.xyz / len);
@@ -132,9 +133,11 @@ vec3 rotatePointByQuaternion(vec3 point, Quaternion q) {
 vec3 inverseTranslate(vec3 point,vec3 translation){
     return point - translation;
 }
+
 vec3 inverseScale(vec3 point,vec3 scale){
     return point / scale;
 }
+
 vec3 inverseRotate(vec3 point, vec3 rotationDegrees) {
     // Convert rotation angles from degrees to quaternions for each axis
     Quaternion rotX = axisAngleToQuaternion(vec3(1, 0, 0), rotationDegrees.x);
@@ -148,7 +151,7 @@ vec3 inverseRotate(vec3 point, vec3 rotationDegrees) {
     return rotatePointByQuaternion(point, combinedRotation);
 }
 
-float SphereSDF(vec3 point, vec3 center, vec3 scale, vec3 rotationDegrees, vec3 translation, out int materialId) {
+float SphereSDF(vec3 point, vec3 center, vec3 scale, vec3 rotationDegrees, vec3 translation) {
     vec3 localPoint = point;
     // TODO: translate, scale, rotate
     // localPoint = inverseTranslate(localPoint,translation);
@@ -157,7 +160,7 @@ float SphereSDF(vec3 point, vec3 center, vec3 scale, vec3 rotationDegrees, vec3 
     float distance = length(localPoint - center) - 1.0;
     return distance;
 }
-float PlaneSDF(vec3 point, vec3 normal, float height, out int materialId){
+float PlaneSDF(vec3 point, vec3 normal, float height){
     return dot(point,normal) + height;
 }
 
@@ -170,12 +173,17 @@ float SceneSDF(vec3 point,out int materialId){
         switch(primatives[i].shape){
             case SPHERE:
                 matId = primatives[i].materialId;
-                distance = SphereSDF(point,primatives[i].position.xyz,primatives[i].scale.xyz,primatives[i].rotation.xyz,vec3(0.0),matId);
+                distance = SphereSDF(point,primatives[i].position.xyz,primatives[i].scale.xyz,primatives[i].rotation.xyz,vec3(0.0));
+                break;
+            case PLANE:
+                matId = primatives[i].materialId;
+                distance = PlaneSDF(point,primatives[i].position.xyz,primatives[i].position.w);
+                break;
             break;
         }
         if(distance < minDistance){
             minDistance = distance;
-            materialId = primatives[i].materialId;
+            materialId = matId;
         }
     }
     return minDistance;
@@ -205,10 +213,11 @@ vec3 CalculateNormal(vec3 p, float epsilon) {
 
 void rayMarch(vec3 rayOrigin, vec3 rayDir,float maxDist, float minDist,out Hit hit) {
     float distanceTraveled = 0.0;
-    int materialId = 0;
     for(int i = 0; i < 100; ++i){
+        int materialId;
         vec3 curPos = rayOrigin + rayDir * distanceTraveled;
         float nearestDist = SceneSDF(curPos,materialId);
+        
         if(nearestDist < minDist){
             hit.distance = distanceTraveled;
             hit.point = curPos;
@@ -250,8 +259,8 @@ vec3 diffuseBRDF(Hit hit) {
         // Trace the new ray and accumulate the diffuse color contribution
         Hit newHit;
         rayMarch(hit.point + newRayDir * 0.001, newRayDir, 100.0, 0.01, newHit);
-
         if (newHit.distance > 0.0) {
+           
             diffuseColor *= materials[newHit.materialId].diffuse.xyz;
             hit = newHit;
         } else {
@@ -276,13 +285,18 @@ void main(){
         hit.distance = -1.0;
         rayMarch(camera.position, rayDir, 100.0, 0.01, hit);
         if (hit.distance > 0.0) {
+            switch (hit.materialId){
+               case 0: finalColor = vec3(1.0,0.0,0.0);break;
+               case 1: finalColor = vec3(0.0,1.0,0.0);break;
+            }
+
             finalColor += diffuseBRDF(hit); 
         }
         else {
             finalColor += BackgroundColor.xyz;
         }
     }
-    FragColor = vec4(finalColor / float(numSamples), 1.0);
+    FragColor = vec4(finalColor,1.0);//vec4(finalColor / float(numSamples), 1.0);
 }
 
 

@@ -2,7 +2,7 @@
   "renderingMethod":"RayTraced",
   "camera":
   {
-    "position": { "x": 0.0, "y": 0.0, "z": 0.0 },
+    "position": { "x": 0.0, "y": 0.0, "z": -5.0 },
     "front": { "x": 0.0, "y": 0.0, "z": 1.0 },
     "up": { "x": 0.0, "y": 1.0, "z": 0.0 },
     "right": { "x": 1.0, "y": 0.0, "z": 0.0 },
@@ -23,15 +23,33 @@
       "shininess": 10.0,
       "albedo": 1.0,
       "reflectivity": 0.0
+    },
+    {
+      "id": 1,
+      "type": "Lambertian",
+      "ambient": { "r": 0.1, "g": 0.1, "b": 0.1, "a": 1.0 },
+      "diffuse": { "r": 0.0, "g": 1.0, "b": 1.0, "a": 1.0 },
+      "specular": { "r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0 },
+      "color": {"r": 0.0, "g": 1.0, "b": 0.0, "a": 1.0},
+      "shininess": 10.0,
+      "albedo": 1.0,
+      "reflectivity": 0.0
     }
   ],
   "primatives": [
     {
       "shape": "Sphere",
-      "position": { "x": 0.0, "y": 0.0, "z": 5.0,"w":0.0 },
+      "position": { "x": 0.0, "y": 0.0, "z": 0.0,"w":1.0 },
       "scale": { "x": 1.0, "y": 1.0, "z": 1.0,"w":0.0 },
       "rotation": { "x": 0.0, "y": 0.0, "z": 45.0,"w":0 },
       "materialId": 0
+    },
+    {
+      "shape": "Plane",
+      "position": { "x": 0.0, "y": 1.0, "z": 0.0,"w":1.0 },
+      "scale": { "x": 1.0, "y": 1.0, "z": 1.0,"w":0.0 },
+      "rotation": { "x": 0.0, "y": 0.0, "z": 45.0,"w":0 },
+      "materialId": 1
     }
   ],
   "lights": [

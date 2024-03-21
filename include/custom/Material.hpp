@@ -15,10 +15,10 @@ namespace Radi::Types
     struct alignas(16) Material{
         int id;
         MaterialType type;
-        alignas(16) glm::vec4 color;
         alignas(16) glm::vec4 ambient;
         alignas(16) glm::vec4 diffuse;
         alignas(16) glm::vec4 specular;
+        alignas(16) glm::vec4 color;
         float shininess;
         float albedo;
         float reflectivity;
