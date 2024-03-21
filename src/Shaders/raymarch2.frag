@@ -9,7 +9,7 @@ const int MAX_SHAPES = 50;
 #define RECTANGLE_LIGHT 998
 #define DIRECTIONAL 997
 #define DISC 996
-
+#define METAL 4
 uniform int VP_X;           // Viewport X
 uniform int VP_Y;           // Viewport Y
 
@@ -234,21 +234,22 @@ void rayMarch(vec3 rayOrigin, vec3 rayDir,float maxDist, float minDist,out Hit h
         if(distanceTraveled > maxDist)break;
     }
 }
-vec3 specularBRDF(Hit hit, vec3 viewDir, vec3 lightDir, vec3 F0) {
-    vec3 halfDir = normalize(viewDir + lightDir);
-    float cosTheta = max(dot(hit.normal, halfDir), 0.0);
-    vec3 F = fresnelSchlick(cosTheta, F0);
-
-    // Assuming a very smooth surface with a small roughness value
-    float alpha = 0.001; // Roughness squared
-    float D = (alpha + 2.0) / (2.0 * 3.14159265) * pow(cosTheta, alpha);
-    
-    // Simplified geometry term
-    float G = min(1.0, 2.0 * cosTheta * dot(hit.normal, viewDir) / dot(viewDir, halfDir));
-    G *= min(1.0, 2.0 * cosTheta * dot(hit.normal, lightDir) / dot(lightDir, halfDir));
-
-    // Specular BRDF
-    return (D * F * G) / (4.0 * max(dot(hit.normal, viewDir), 0.0) * max(dot(hit.normal, lightDir), 0.0));
+vec3 specularBRDF(Hit hit, vec3 viewDir) {
+    Material material = materials[hit.materialId];
+    vec3 specularColor = materials[hit.materialId].specular.xyz;
+    vec3 lightDir = normalize(lights[0].position - hit.point); // Assuming a single light source for simplicity
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+    float NdotH = max(dot(hit.normal, halfwayDir), 0.0);
+    vec3 F0 = mix(vec3(0.04), material.color.xyz, material.metallic); // Lerp between dielectric and metal F0 values
+    vec3 fresnel = fresnelSchlick(NdotH, F0);
+    float roughness = material.roughness * material.roughness; // Remapping roughness to [0, 1] range
+    float ggx2 = NdotH * NdotH * (roughness * roughness - 1.0) + 1.0;
+    ggx2 = max(ggx2, 0.0001); // Prevent division by zero
+    float denominator = 4.0 * NdotH * NdotH + roughness * roughness;
+    float geometry = material.roughness / denominator;
+    float NdotV = max(dot(hit.normal, viewDir), 0.0);
+    specularColor = fresnel * geometry / ggx2 * material.color.xyz * lights[0].color.xyz * lights[0].intensity * max(dot(hit.normal, lightDir), 0.0) / NdotV;
+    return specularColor;
 }
 
 vec3 diffuseBRDF(Hit hit,bool useDirectLighting) {
@@ -312,7 +313,12 @@ void main(){
         hit.distance = -1.0;
         rayMarch(camera.position, rayDir, 100.0, 0.01, hit);
         if (hit.distance > 0.0) {
-            finalColor += diffuseBRDF(hit,useDirectLighting); 
+            if(materials[hit.materialId].type == METAL){
+                //use specular BRDF
+                finalColor += diffuseBRDF(hit,useDirectLighting)+ specularBRDF(hit,normalize(camera.position - hit.point));
+            }else{
+                finalColor += diffuseBRDF(hit,useDirectLighting); 
+            }
         }
         if(hit.distance<0.0){
             finalColor += BackgroundColor.xyz;
