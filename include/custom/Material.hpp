@@ -22,6 +22,8 @@ namespace Radi::Types
         float shininess;
         float albedo;
         float reflectivity;
+        float metallic;
+        float roughness;
 
         static Material* createFromJson(nlohmann::json matJson){
             Material* mat = new Material();
@@ -67,6 +69,8 @@ namespace Radi::Types
             mat->shininess = matJson["shininess"].get<float>();
             mat->albedo = matJson["albedo"].get<float>();
             mat->reflectivity = matJson["reflectivity"].get<float>();
+            mat->metallic = matJson["metallic"].get<float>();
+            mat->roughness = matJson["roughness"].get<float>();
             return mat;
         };
     };

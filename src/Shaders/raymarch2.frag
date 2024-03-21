@@ -33,6 +33,8 @@ struct Material{
     float shininess;
     float albedo;
     float reflectivity;
+    float metallic;
+    float roughness;
 };
 struct Primative{
     int shape;

@@ -22,7 +22,9 @@
       "color": {"r": 0.0, "g": 1.0, "b": 0.0, "a": 1.0},
       "shininess": 10.0,
       "albedo": 1.0,
-      "reflectivity": 0.0
+      "reflectivity": 0.0,
+      "metallic":0.0,
+      "roughness":0.0
     },
     {
       "id": 1,
@@ -33,18 +35,22 @@
       "color": {"r": 0.0, "g": 1.0, "b": 0.0, "a": 1.0},
       "shininess": 10.0,
       "albedo": 1.0,
-      "reflectivity": 0.0
+      "reflectivity": 0.0,
+      "metallic":0.0,
+      "roughness":0.0
     },
     {
       "id": 2,
-      "type": "Metallic",
-      "ambient": { "r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0 },
-      "diffuse": { "r": 0.0, "g": 0.0, "b": 0.0, "a": 0.0 },
+      "type": "Metal",
+      "ambient": { "r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0 },
+      "diffuse": { "r": 0.5, "g": 0.5, "b": 0.5, "a": 0.0 },
       "specular": { "r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0 },
       "color": { "r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0 },
       "shininess": 0.0,
       "albedo": 1.0,
-      "reflectivity": 1.0
+      "reflectivity": 1.0,
+      "metallic":1.0,
+      "roughness":0.01
     }
   ],
   "primatives": [
@@ -53,7 +59,7 @@
       "position": { "x": 0.0, "y": 0.0, "z": 0.0,"w":1.0 },
       "scale": { "x": 1.0, "y": 1.0, "z": 1.0,"w":0.0 },
       "rotation": { "x": 0.0, "y": 0.0, "z": 45.0,"w":0 },
-      "materialId": 0
+      "materialId": 2
     },
     {
       "shape": "Plane",
