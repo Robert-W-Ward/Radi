@@ -92,7 +92,9 @@ float random(vec2 st)
 {
     return fract(sin(dot(st.xy, vec2(12.9898,78.233)))* 43758.5453123);
 }
-
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
 
 Quaternion axisAngleToQuaternion(vec3 axis, float angleDeg) {
     float angleRad = angleDeg * 3.1415926535897932384626433832795 / 180.0; // Convert to radians
@@ -196,6 +198,7 @@ vec3 getRayDir(vec2 screenCoords){
     screenPos.x *= camera.aspectRatio;
     return normalize(camera.right*screenPos.x + camera.worldUp * screenPos.y + camera.front);
 }
+
 vec3 CalculateNormal(vec3 p, float epsilon) {
     const vec3 dx = vec3(epsilon, 0.0, 0.0);
     const vec3 dy = vec3(0.0, epsilon, 0.0);
@@ -229,46 +232,65 @@ void rayMarch(vec3 rayOrigin, vec3 rayDir,float maxDist, float minDist,out Hit h
         if(distanceTraveled > maxDist)break;
     }
 }
+vec3 specularBRDF(Hit hit, vec3 viewDir, vec3 lightDir, vec3 F0) {
+    vec3 halfDir = normalize(viewDir + lightDir);
+    float cosTheta = max(dot(hit.normal, halfDir), 0.0);
+    vec3 F = fresnelSchlick(cosTheta, F0);
 
+    // Assuming a very smooth surface with a small roughness value
+    float alpha = 0.001; // Roughness squared
+    float D = (alpha + 2.0) / (2.0 * 3.14159265) * pow(cosTheta, alpha);
+    
+    // Simplified geometry term
+    float G = min(1.0, 2.0 * cosTheta * dot(hit.normal, viewDir) / dot(viewDir, halfDir));
+    G *= min(1.0, 2.0 * cosTheta * dot(hit.normal, lightDir) / dot(lightDir, halfDir));
 
-vec3 diffuseBRDF(Hit hit) {
+    // Specular BRDF
+    return (D * F * G) / (4.0 * max(dot(hit.normal, viewDir), 0.0) * max(dot(hit.normal, lightDir), 0.0));
+}
+
+vec3 diffuseBRDF(Hit hit,bool useDirectLighting) {
     vec3 diffuseColor = vec3(0.0);
     Material material = materials[hit.materialId];
 
     diffuseColor = material.diffuse.xyz;
 
+    if(useDirectLighting){
 
-    // Direct lighting
-    // for (int i = 0; i < lights.length(); ++i) {
-    //     Light light = lights[i];
-    //     vec3 lightDir = normalize(light.position - hit.point);
-    //     float diff = max(dot(hit.normal, lightDir), 0.0);
-    //     diffuseColor += material.color.xyz * light.color.xyz * diff;
-    // }
+        vec3 viewDir = normalize(camera.position - hit.point);
+        // Direct lighting
+        for (int i = 0; i < lights.length(); ++i) {
+            Light light = lights[i];
+            float lightDistance = length(light.position - hit.point);
+            float attenuation = 1.0/(lightDistance * lightDistance);
+            vec3 lightDir = normalize(light.position - hit.point);
+            float diff = max(dot(hit.normal, lightDir), 0.0);
+            diffuseColor += material.color.xyz * light.color.xyz * diff *light.intensity * attenuation;
+        }
+    }else{
+        // Indirect lighting
+        for (int depth = 0; depth < MAX_REFLECTION_DEPTH; ++depth) {
+            // Randomly sample a new ray direction based on the diffuse BRDF
+            vec3 randomDir = normalize(vec3(
+                random(gl_FragCoord.xy + vec2(time, 0.0)) * 2.0 - 1.0,
+                random(gl_FragCoord.xy + vec2(0.0, time)) * 2.0 - 1.0,
+                random(gl_FragCoord.xy + vec2(time, time)) * 2.0 - 1.0
+            ));
+            vec3 newRayDir = normalize(hit.normal + randomDir);
 
-    // Indirect lighting
-    for (int depth = 0; depth < MAX_REFLECTION_DEPTH; ++depth) {
-        // Randomly sample a new ray direction based on the diffuse BRDF
-        vec3 randomDir = normalize(vec3(
-            random(gl_FragCoord.xy + vec2(time, 0.0)) * 2.0 - 1.0,
-            random(gl_FragCoord.xy + vec2(0.0, time)) * 2.0 - 1.0,
-            random(gl_FragCoord.xy + vec2(time, time)) * 2.0 - 1.0
-        ));
-        vec3 newRayDir = normalize(hit.normal + randomDir);
-
-        // Trace the new ray and accumulate the diffuse color contribution
-        Hit newHit;
-        rayMarch(hit.point + newRayDir * 0.001, newRayDir, 100.0, 0.01, newHit);
-        if (newHit.distance > 0.0) {
-           
-            diffuseColor *= materials[newHit.materialId].diffuse.xyz;
-            hit = newHit;
-        } else {
-            diffuseColor *= BackgroundColor.xyz; // Background color contribution
-            break; // Exit the loop if the ray doesn't hit any geometry
+            // Trace the new ray and accumulate the diffuse color contribution
+            Hit newHit;
+            rayMarch(hit.point + newRayDir * 0.001, newRayDir, 100.0, 0.01, newHit);
+            if (newHit.distance > 0.0) {
+            
+                diffuseColor *= materials[newHit.materialId].diffuse.xyz;
+                hit = newHit;
+            } else {
+                diffuseColor *= BackgroundColor.xyz; // Background color contribution
+                break; // Exit the loop if the ray doesn't hit any geometry
+            }
         }
     }
-
     return diffuseColor;
 }
 
@@ -277,6 +299,9 @@ void main(){
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
     vec3 finalColor = vec3(0.0);
     int numSamples = 8;
+
+    bool useDirectLighting = screenCoords.x < 0.0;
+
     for (int i = 0; i < numSamples; ++i) {
         vec2 jitter = vec2(random(gl_FragCoord.xy + i * vec2(time, time)), random(gl_FragCoord.xy + i * vec2(time, time) + vec2(12.9898, 78.233))) * 2.0 - 1.0;
         jitter /= vec2(VP_X, VP_Y);
@@ -285,38 +310,11 @@ void main(){
         hit.distance = -1.0;
         rayMarch(camera.position, rayDir, 100.0, 0.01, hit);
         if (hit.distance > 0.0) {
-            switch (hit.materialId){
-               case 0: finalColor = vec3(1.0,0.0,0.0);break;
-               case 1: finalColor = vec3(0.0,1.0,0.0);break;
-            }
-
-            finalColor += diffuseBRDF(hit); 
+            finalColor += diffuseBRDF(hit,useDirectLighting); 
         }
-        else {
+        if(hit.distance<0.0){
             finalColor += BackgroundColor.xyz;
         }
     }
-    FragColor = vec4(finalColor,1.0);//vec4(finalColor / float(numSamples), 1.0);
+    FragColor = vec4(finalColor / float(numSamples), 1.0);
 }
-
-
-
-
-
-// void main() {
-//     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
-//     vec3 rayOrigin = vec3(0.0);
-//     vec3 rayDir = getRayDir(screenCoords);
-//     Hit hit;
-//     hit.distance = -1.0;
-//     rayMarch(rayOrigin, rayDir, 100.0, 0.01, hit);
-    
-//     if(hit.distance > 0.0){
-//         FragColor = vec4(materials[hit.materialId].color.xyz,1.0);
-//         //FragColor = materials[hit.materialId].color; // Material color visualization
-//     }
-//     else{
-//         FragColor = BackgroundColor;
-//     }
-
-// }   
