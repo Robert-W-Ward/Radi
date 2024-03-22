@@ -2,6 +2,7 @@
 #version 460 core
 const int MAX_SHAPES = 50;
 #define SPHERE 0
+#define BOX 1
 #define PLANE 3
 #define POINT_LIGHT 999
 out vec4 FragColor;
@@ -131,6 +132,7 @@ vec3 CalculateNormal(vec3 p, float epsilon) {
     return normalize(n);
 }
 float calculateShadow(vec3 hitPoint, vec3 lightPosition, float maxShadowDist, float minDist, float shadowSharpness) {
+    return 1.0;
     vec3 shadowRayDir = normalize(lightPosition - hitPoint);
     float lightDistance = length(lightPosition - hitPoint);
     float distanceTraveled = minDist; // Start at a small offset to avoid self-shadowing
@@ -161,8 +163,14 @@ float SphereSDF(vec3 point, vec3 center, vec3 scale, vec3 rotationDegrees, vec3 
     float distance = length(localPoint - center) - 1.0;
     return distance;
 }
+float BoxSDF(vec3 point, vec3 position, vec3 scale) {
+    vec3 localPoint = point - position;
+    vec3 absLocalPoint = abs(localPoint);
+    vec3 d = absLocalPoint - scale;
+    return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
+}
 float PlaneSDF(vec3 point, vec3 planePosition, vec3 planeNormal) {
-    return dot(point - planePosition, planeNormal);
+    return dot(planeNormal, (point - planePosition));
 }
 float SceneSDF(vec3 point,out int materialId){
     //Loop over all shapes and return the minimum distance
@@ -175,6 +183,11 @@ float SceneSDF(vec3 point,out int materialId){
                 matId = primatives[i].materialId;
                 distance = SphereSDF(point,primatives[i].position.xyz,primatives[i].scale.xyz,primatives[i].rotation.xyz,vec3(0.0));
                 break;
+            case BOX:
+                matId = primatives[i].materialId;
+                //normal should be in the positive y direction
+                distance = BoxSDF(point,primatives[i].position.xyz,primatives[i].scale.xyz);
+                break;
             default:
                 break;
         }
@@ -185,7 +198,6 @@ float SceneSDF(vec3 point,out int materialId){
     }
     return minDistance;
 }
-
 ////////////////////////////////////
 ///        Raymarching           ///
 ////////////////////////////////////
@@ -208,18 +220,17 @@ void rayMarch(vec3 rayOrigin, vec3 rayDir,float maxDist, float minDist,out Hit h
         if(distanceTraveled > maxDist)break;
     }
 }
-
 void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit) {
-    float tMin = 0.001;
+    float tMin = 0.01;
     float tMax = 1000.0;
     
     while (tMin < tMax) {
         vec3 point = rayOrigin + rayDir * tMin;
-        int materialId;
+        int materialId = 0;
         float distance = SceneSDF(point, materialId);
         
         if (distance < 0.001) {
-            hit.distance = tMin;
+            hit.distance = distance;
             hit.point = point;
             hit.normal = CalculateNormal(point, 0.001);
             hit.materialId = materialId;
@@ -294,6 +305,9 @@ vec3 diffuseBRDFWithDirectLighting(Hit hit,vec3 incomingRayDir,vec3 outgoingRayD
     for (int i = 0; i < lights.length(); ++i) {
         vec3 lightDir = normalize(lights[i].position - hit.point);
         float NdotL = max(dot(hit.normal, lightDir), 0.0);
+
+        float shadowFactor = calculateShadow(hit.point, lights[i].position, 100.0, 0.01, 0.5);
+
         diffuseColor+= material.diffuse.xyz * lights[i].color.xyz * lights[i].intensity * NdotL;
     }
     return diffuseColor;
@@ -302,8 +316,6 @@ vec3 diffuseBRDFWithDirectLighting(Hit hit,vec3 incomingRayDir,vec3 outgoingRayD
 ////////////////////////////////////
 ///        Path tracing          ///
 ////////////////////////////////////
-
-
 vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
     vec3 throughput = vec3(1.0);
     vec3 radiance = vec3(0.0);
@@ -344,7 +356,7 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
 void main(){
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
     vec3 finalColor = vec3(0.0);
-    int numSamples = 16;
+    int numSamples = 32;
 
     bool useDirectLighting = true; //screenCoords.x < 0.0;
 
