@@ -5,6 +5,8 @@ const int MAX_SHAPES = 50;
 #define BOX 1
 #define PLANE 3
 #define POINT_LIGHT 999
+#define RECIPROCAL_PI 0.3183098861837907
+#define RECIPROCAL_2PI 0.15915494309189535
 out vec4 FragColor;
 
 
@@ -18,8 +20,6 @@ const int METALLIC = 1;
 const int DIELECTRIC = 2;
 const int MAX_RAY_DEPTH = 10;
 const vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
-
-float SceneSDF(vec3 point,out int materialId);
 ///////////////////////////////
 ///         Structs         ///
 ///////////////////////////////
@@ -66,11 +66,17 @@ struct Light{
     int type;
     int shape;
     vec4 color;
-    vec3 position;
-    vec3 scale;
-    vec3 rotation;
+    vec4 position;
+    vec4 scale;
+    vec4 rotation;
     float intensity;
 };
+
+///////////////////////////////
+///    Function Definitions ///
+///////////////////////////////
+float SceneSDF(vec3 point,out int materialId);
+void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit);
 ///////////////////////////////
 ///      SSBOs              ///
 ///////////////////////////////
@@ -87,8 +93,40 @@ layout(std430, binding = 3) buffer CameraBuffer{
     Camera camera;
 };
 //////////////////////////////////
-///      Utility Function      ///
+///      Utility Functions     ///
 //////////////////////////////////
+// Utility function to convert degrees to radians
+float degreesToRadians(float degrees) {
+    return degrees * (3.141592653589793 / 180.0);
+}
+vec3 rotateX(vec3 p, float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    return vec3(p.x, c*p.y - s*p.z, s*p.y + c*p.z);
+}
+// Utility function to rotate a point around the Y axis
+vec3 rotateY(vec3 p, float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    return vec3(c*p.x + s*p.z, p.y, -s*p.x + c*p.z);
+}
+// Utility function to rotate a point around the Z axis
+vec3 rotateZ(vec3 p, float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    return vec3(c*p.x - s*p.y, s*p.x + c*p.y, p.z);
+}
+// Function to rotate a point around an arbitrary axis
+vec3 rotatePoint(vec3 p, vec3 rotationDegrees) {
+    // Convert rotation from degrees to radians
+    vec3 rotationRadians = vec3(degreesToRadians(rotationDegrees.x), degreesToRadians(rotationDegrees.y), degreesToRadians(rotationDegrees.z));
+    
+    // Apply rotations in radians
+    p = rotateX(p, rotationRadians.x);
+    p = rotateY(p, rotationRadians.y);
+    p = rotateZ(p, rotationRadians.z);
+    return p;
+}
 float random(vec2 st){
     return fract(sin(dot(st.xy, vec2(12.9898,78.233)))* 43758.5453123);
 }
@@ -131,43 +169,71 @@ vec3 CalculateNormal(vec3 p, float epsilon) {
 
     return normalize(n);
 }
-float calculateShadow(vec3 hitPoint, vec3 lightPosition, float maxShadowDist, float minDist, float shadowSharpness) {
-    return 1.0;
-    vec3 shadowRayDir = normalize(lightPosition - hitPoint);
-    float lightDistance = length(lightPosition - hitPoint);
-    float distanceTraveled = minDist; // Start at a small offset to avoid self-shadowing
-    float shadowFactor = 1.0;
+float distributionGGX(vec3 N, vec3 H, float roughness) {
+    // GGX distribution - Trowbridge-Reitz
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
 
-    while (distanceTraveled < lightDistance && distanceTraveled < maxShadowDist) {
-        vec3 curPos = hitPoint + shadowRayDir * distanceTraveled;
-        int mat;
-        float nearestDist = SceneSDF(curPos, mat);
+    float nom = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = 3.14159 * (denom * denom);
 
-        if (nearestDist < minDist+.01) {
-            return 0.0; // Early exit if in shadow
-        }
-
-        // Accumulate shadow factor based on the distance traveled and shadow sharpness
-        shadowFactor = min(shadowFactor, shadowSharpness * nearestDist / distanceTraveled);
-
-        distanceTraveled += nearestDist;
-    }
-
-    return shadowFactor;
+    return nom / max(denom, 0.0000001);
 }
+bool inShadow(vec3 point, vec3 lightPosition) {
+    vec3 shadowRayDirection = normalize(lightPosition - point);
+    float distanceToLight = length(lightPosition - point);
+    Hit shadowHit;
+    
+    rayIntersect(point + shadowRayDirection * 0.001, shadowRayDirection, shadowHit);
+    return shadowHit.distance > 0.0 && shadowHit.distance < distanceToLight;
+}
+vec3 reflectRay(vec3 incident, vec3 normal) {
+    return incident - 2.0 * dot(incident, normal) * normal;
+}
+vec3 refractRay(vec3 I, vec3 N, float ior) {
+    float cosI = clamp(-1.0, 1.0, dot(I, N));
+    float etaI = 1.0, etaT = ior;
+    vec3 n = N;
+    if (cosI < 0.0) { cosI = -cosI; } else 
+    { 
+        float temp = etaI;
+        etaI = etaT;
+        etaT = temp;
+        n = -N;
+    }
+    float eta = etaI / etaT;
+    float k = 1.0 - eta * eta * (1.0 - cosI * cosI);
+    if (k < 0.0) {
+        return vec3(0.0);
+    }else{
+        return eta * I + (eta * cosI - sqrt(k)) * n;
+    }
+}
+
 ////////////////////////////////////
-///        Shape SDFs            ///
+///            SDFs              ///
 ////////////////////////////////////
 float SphereSDF(vec3 point, vec3 center, vec3 scale, vec3 rotationDegrees, vec3 translation) {
     vec3 localPoint = point;
     float distance = length(localPoint - center) - 1.0;
     return distance;
 }
-float BoxSDF(vec3 point, vec3 position, vec3 scale) {
+float BoxSDF(vec3 point, vec3 position, vec3 scale, vec3 rotationDegrees) {
+    // Transform the point into the box's local coordinate space
     vec3 localPoint = point - position;
-    vec3 absLocalPoint = abs(localPoint);
-    vec3 d = absLocalPoint - scale;
-    return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
+    localPoint = rotatePoint(localPoint, -rotationDegrees); // Inverse rotation to align the point with the box
+
+    // Apply scale
+    vec3 absLocalPoint = abs(localPoint) / scale;
+    vec3 d = absLocalPoint - vec3(1.0);
+
+    // Signed distance
+    float insideDistance = min(max(d.x, max(d.y, d.z)), 0.0);
+    float outsideDistance = length(max(d, 0.0));
+    return insideDistance + outsideDistance;
 }
 float PlaneSDF(vec3 point, vec3 planePosition, vec3 planeNormal) {
     return dot(planeNormal, (point - planePosition));
@@ -186,7 +252,7 @@ float SceneSDF(vec3 point,out int materialId){
             case BOX:
                 matId = primatives[i].materialId;
                 //normal should be in the positive y direction
-                distance = BoxSDF(point,primatives[i].position.xyz,primatives[i].scale.xyz);
+                distance = BoxSDF(point,primatives[i].position.xyz,primatives[i].scale.xyz,primatives[i].rotation.xyz);
                 break;
             default:
                 break;
@@ -199,27 +265,8 @@ float SceneSDF(vec3 point,out int materialId){
     return minDistance;
 }
 ////////////////////////////////////
-///        Raymarching           ///
+///        Path tracing          ///
 ////////////////////////////////////
-
-void rayMarch(vec3 rayOrigin, vec3 rayDir,float maxDist, float minDist,out Hit hit) {
-    float distanceTraveled = 0.0;
-    for(int i = 0; i < 1000; ++i){
-        int materialId;
-        vec3 curPos = rayOrigin + rayDir * distanceTraveled;
-        float nearestDist = SceneSDF(curPos,materialId);
-        
-        if(nearestDist < minDist){
-            hit.distance = distanceTraveled;
-            hit.point = curPos;
-            hit.normal = CalculateNormal(curPos,0.001);
-            hit.materialId = materialId;
-            break;
-        }
-        distanceTraveled += nearestDist;
-        if(distanceTraveled > maxDist)break;
-    }
-}
 void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit) {
     float tMin = 0.01;
     float tMax = 1000.0;
@@ -242,54 +289,17 @@ void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit) {
     
     hit.distance = -1.0; 
 }
-
 ////////////////////////////////////
 ///           BRDFs              ///
 ////////////////////////////////////
-vec3 dielectricBRDF(Hit hit, vec3 viewDir, vec3 rayDir) {
-    Material material = materials[hit.materialId];
-    vec3 refractDir = refract(rayDir, hit.normal, 1.0 / material.ior);
-    vec3 reflectDir = reflect(rayDir, hit.normal);
-    float fresnel = fresnelSchlick(max(dot(rayDir, hit.normal), 0.0), vec3(0.04)).r;
-
-    vec3 dielectricColor = vec3(0.0);
-
-    if (refractDir != vec3(0.0)) {
-        Hit refractHit;
-        rayMarch(hit.point + refractDir * 0.001, refractDir, 100.0, 0.01, refractHit);
-        if (refractHit.distance > 0.0) {
-            dielectricColor += materials[refractHit.materialId].diffuse.xyz * (1.0 - fresnel);
-        } else {
-            dielectricColor += BackgroundColor.xyz * (1.0 - fresnel);
-        }
-    }
-
-    Hit reflectHit;
-    rayMarch(hit.point + reflectDir * 0.001, reflectDir, 100.0, 0.01, reflectHit);
-    if (reflectHit.distance > 0.0) {
-        dielectricColor += materials[reflectHit.materialId].diffuse.xyz * fresnel;
-    } else {
-        dielectricColor += BackgroundColor.xyz * fresnel;
-    }
-
-    return dielectricColor;
+vec3 dielectricBRDF(Hit hit, vec3 V, vec3 L) {
+    return vec3(0.0);
 }
-vec3 specularBRDF(Hit hit, vec3 viewDir) {
-    Material material = materials[hit.materialId];
-    vec3 specularColor = materials[hit.materialId].specular.xyz;
-    vec3 lightDir = normalize(lights[0].position - hit.point); // Assuming a single light source for simplicity
-    vec3 halfwayDir = normalize(lightDir + viewDir);
-    float NdotH = max(dot(hit.normal, halfwayDir), 0.0);
-    vec3 F0 = mix(vec3(0.04), material.diffuse.xyz, material.metallic); 
-    vec3 fresnel = fresnelSchlick(NdotH, F0);
-    float roughness = material.roughness * material.roughness; // Remapping roughness to [0, 1] range
-    float ggx2 = NdotH * NdotH * (roughness * roughness - 1.0) + 1.0;
-    ggx2 = max(ggx2, 0.0001); // Prevent division by zero
-    float denominator = 4.0 * NdotH * NdotH + roughness * roughness;
-    float geometry = material.roughness / denominator;
-    float NdotV = max(dot(hit.normal, viewDir), 0.0);
-    specularColor = fresnel * geometry / ggx2 * material.diffuse.xyz * lights[0].color.xyz * lights[0].intensity * max(dot(hit.normal, lightDir), 0.0) / NdotV;
-    return specularColor;
+vec3 specularBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, vec3 specularColor, float shininess) {
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float specAngle = max(dot(reflectDir, viewDir), 0.0);
+    float specFactor = pow(specAngle, shininess); 
+    return specularColor * specFactor; 
 }
 vec3 diffuseBRDFNoDirectLighting(Hit hit,vec3 incomingRayDir,vec3 outgoingRayDir) {
     vec3 diffuseColor = vec3(0.0);
@@ -303,30 +313,36 @@ vec3 diffuseBRDFWithDirectLighting(Hit hit,vec3 incomingRayDir,vec3 outgoingRayD
     diffuseColor = material.diffuse.xyz;
 
     for (int i = 0; i < lights.length(); ++i) {
-        vec3 lightDir = normalize(lights[i].position - hit.point);
+        vec3 lightDir = normalize(lights[i].position.xyz - hit.point);
         float NdotL = max(dot(hit.normal, lightDir), 0.0);
 
-        float shadowFactor = calculateShadow(hit.point, lights[i].position, 100.0, 0.01, 0.5);
-
-        diffuseColor+= material.diffuse.xyz * lights[i].color.xyz * lights[i].intensity * NdotL;
+        if(!inShadow(hit.point, lights[i].position.xyz)){
+            diffuseColor+= material.diffuse.xyz * lights[i].color.xyz * lights[i].intensity * NdotL ;
+        }
     }
     return diffuseColor;
 }
-
+vec3 modifiedPhongBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, 
+                vec3 phongDiffuseCol, vec3 phongSpecularCol, float phongShininess) {
+  vec3 color = phongDiffuseCol * RECIPROCAL_PI;
+  vec3 reflectDir = reflect(-lightDir, normal);
+  float specDot = max(dot(reflectDir, viewDir), 0.001);
+  float normalization = (phongShininess + 2.0) * RECIPROCAL_2PI; 
+  color += pow(specDot, phongShininess) * normalization * phongSpecularCol;
+  return color;
+}
 ////////////////////////////////////
 ///        Path tracing          ///
 ////////////////////////////////////
 vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
     vec3 throughput = vec3(1.0);
     vec3 radiance = vec3(0.0);
-    
     for (int depth = 0; depth < MAX_RAY_DEPTH; ++depth) {
         Hit hit;
         rayIntersect(rayOrigin, rayDir, hit);
-        
+
         if (hit.distance > 0.0) {
             Material material = materials[hit.materialId];
-            
             // Russian Roulette termination
             if (depth > 3) {
                 float p = max(material.diffuse.x, max(material.diffuse.y, material.diffuse.z));
@@ -338,12 +354,13 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
             
             // Diffuse BRDF sampling
             vec3 randomDir = normalize(hit.normal + randomHemisphereDirection(hit.normal));
-            vec3 brdf = diffuseBRDFWithDirectLighting(hit, rayDir, randomDir);
-            
-            throughput *= brdf;
+            vec3 diffusebrdf = diffuseBRDFWithDirectLighting(hit, rayDir, randomDir);
+            vec3 specBRDF = specularBRDF(lights[0].position.xyz - hit.point, -rayDir, hit.normal, material.specular.xyz, material.shininess);
+            throughput *= (specBRDF + diffusebrdf) * RECIPROCAL_PI;
             
             rayOrigin = hit.point + randomDir * 0.001;
             rayDir = randomDir;
+            
         } else {
             radiance += throughput * BackgroundColor.xyz; break;
         }
@@ -354,17 +371,15 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
 
 
 void main(){
+
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
     vec3 finalColor = vec3(0.0);
-    int numSamples = 32;
-
-    bool useDirectLighting = true; //screenCoords.x < 0.0;
+    int numSamples = 8;
 
     for (int i = 0; i < numSamples; ++i) {
         vec2 jitter = vec2(random(gl_FragCoord.xy + i * vec2(time, time)), random(gl_FragCoord.xy + i * vec2(time, time) + vec2(12.9898, 78.233))) * 2.0 - 1.0;
         jitter /= vec2(VP_X, VP_Y);
         vec3 rayDir = getRayDir(screenCoords + jitter);
-
         vec3 color = pathTrace(camera.position, rayDir);
         finalColor += color;
     }

@@ -14,9 +14,9 @@
         LightType type;
         Shape shape;
         alignas(16) glm::vec4 color;
-        alignas(16) glm::vec3 position;
-        alignas(16) glm::vec3 scale;
-        alignas(16) glm::vec3 rotation;
+        alignas(16) glm::vec4 position;
+        alignas(16) glm::vec4 scale;
+        alignas(16) glm::vec4 rotation;
         float intensity;
 
         static Light* createFromJson(nlohmann::json lightJson){
@@ -43,20 +43,27 @@
                 lightJson["color"]["a"].get<float>()
             );
 
-            light->position = glm::vec3(
+            light->position = glm::vec4(
                 lightJson["position"]["x"].get<float>(),
                 lightJson["position"]["y"].get<float>(),
-                lightJson["position"]["z"].get<float>());
+                lightJson["position"]["z"].get<float>(),
+                lightJson["position"]["w"].get<float>()
+            );
 
-            light->scale = glm::vec3(
+            light->scale = glm::vec4(
                 lightJson["scale"]["x"].get<float>(),
                 lightJson["scale"]["y"].get<float>(),
-                lightJson["scale"]["z"].get<float>());
+                lightJson["scale"]["z"].get<float>(),
+                lightJson["scale"]["w"].get<float>()
+            );
 
-            light->rotation = glm::vec3(
+
+            light->rotation = glm::vec4(
                 lightJson["rotation"]["x"].get<float>(),
                 lightJson["rotation"]["y"].get<float>(),
-                lightJson["rotation"]["z"].get<float>());
+                lightJson["rotation"]["z"].get<float>(),
+                lightJson["rotation"]["w"].get<float>()
+            );
 
             light->intensity = lightJson["intensity"].get<float>();
 
