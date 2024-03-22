@@ -73,12 +73,12 @@ struct Light{
 };
 
 ///////////////////////////////
-///    Function Definitions ///
+///   Function Declarations ///
 ///////////////////////////////
 float SceneSDF(vec3 point,out int materialId);
 void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit);
 ///////////////////////////////
-///      SSBOs              ///
+///           SSBOs         ///
 ///////////////////////////////
 layout(std430, binding = 0) buffer PrimativeBuffer{ 
     Primative primatives[];
@@ -292,9 +292,6 @@ void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit) {
 ////////////////////////////////////
 ///           BRDFs              ///
 ////////////////////////////////////
-vec3 dielectricBRDF(Hit hit, vec3 V, vec3 L) {
-    return vec3(0.0);
-}
 vec3 specularBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, vec3 specularColor, float shininess) {
     vec3 reflectDir = reflect(-lightDir, normal);
     float specAngle = max(dot(reflectDir, viewDir), 0.0);
@@ -317,7 +314,7 @@ vec3 diffuseBRDFWithDirectLighting(Hit hit,vec3 incomingRayDir,vec3 outgoingRayD
         float NdotL = max(dot(hit.normal, lightDir), 0.0);
 
         if(!inShadow(hit.point, lights[i].position.xyz)){
-            diffuseColor+= material.diffuse.xyz * lights[i].color.xyz * lights[i].intensity * NdotL ;
+            diffuseColor += material.diffuse.xyz * lights[i].color.xyz * lights[i].intensity * NdotL;        
         }
     }
     return diffuseColor;
