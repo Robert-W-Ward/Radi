@@ -6,11 +6,8 @@ namespace Radi::Types
 
     enum MaterialType {
         Lambertian,
-        Specular,
-        Glossy,
-        Dielectric,
-        Metal,
-        Emissive
+        Metallic,
+        Dielectric
     };
     struct alignas(16) Material{
         int id;
@@ -24,6 +21,7 @@ namespace Radi::Types
         float reflectivity;
         float metallic;
         float roughness;
+        float ior;
 
         static Material* createFromJson(nlohmann::json matJson){
             Material* mat = new Material();
@@ -31,12 +29,10 @@ namespace Radi::Types
             // read in type as a string and convert to enum
             std::map<std::string, MaterialType> typeMap{
                 {"Lambertian", Lambertian}, 
-                {"Specular", Specular}, 
-                {"Glossy", Glossy}, 
+                {"Metallic", Metallic}, 
                 {"Dielectric", Dielectric}, 
-                {"Metal", Metal}, 
-                {"Emissive", Emissive}
             };
+            auto type = matJson["type"].get<std::string>();
             mat->type = typeMap[matJson["type"].get<std::string>()];
             mat->color = glm::vec4(
                 matJson["color"]["r"].get<float>(),
@@ -71,6 +67,7 @@ namespace Radi::Types
             mat->reflectivity = matJson["reflectivity"].get<float>();
             mat->metallic = matJson["metallic"].get<float>();
             mat->roughness = matJson["roughness"].get<float>();
+            mat->ior = matJson["ior"].get<float>();
             return mat;
         };
     };

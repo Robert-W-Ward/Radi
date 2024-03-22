@@ -18,55 +18,101 @@
       "type": "Lambertian",
       "ambient": { "r": 0.1, "g": 0.1, "b": 0.1, "a": 1.0 },
       "diffuse": { "r": 1.0, "g": 0.0, "b": 0.0, "a": 1.0 },
-      "specular": { "r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0 },
-      "color": {"r": 0.0, "g": 1.0, "b": 0.0, "a": 1.0},
-      "shininess": 10.0,
+      "specular": { "r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0 },
+      "color": {"r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0},
+      "shininess": 0.0,
       "albedo": 1.0,
       "reflectivity": 0.0,
       "metallic":0.0,
-      "roughness":0.0
+      "roughness":0.0,
+      "ior":1.0
     },
     {
       "id": 1,
       "type": "Lambertian",
       "ambient": { "r": 0.1, "g": 0.1, "b": 0.1, "a": 1.0 },
-      "diffuse": { "r": 0.0, "g": 1.0, "b": 1.0, "a": 1.0 },
-      "specular": { "r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0 },
-      "color": {"r": 0.0, "g": 1.0, "b": 0.0, "a": 1.0},
-      "shininess": 10.0,
+      "diffuse": { "r": 1.0, "g": 0.0, "b": 0.0, "a": 1.0 },
+      "specular": { "r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0 },
+      "color": {"r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0},
+      "shininess": 0.0,
       "albedo": 1.0,
       "reflectivity": 0.0,
       "metallic":0.0,
-      "roughness":0.0
+      "roughness":0.0,
+      "ior":1.0
     },
     {
       "id": 2,
-      "type": "Metal",
-      "ambient": { "r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0 },
-      "diffuse": { "r": 1.0, "g": 0.0, "b": 0.0, "a": 0.0 },
-      "specular": { "r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0 },
-      "color": { "r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0 },
+      "type": "Lambertian",
+      "ambient": { "r": 0.1, "g": 0.1, "b": 0.1, "a": 1.0 },
+      "diffuse": { "r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0 },
+      "specular": { "r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0 },
+      "color": {"r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0},
       "shininess": 0.0,
+      "albedo": 1.0,
+      "reflectivity": 0.0,
+      "metallic":0.0,
+      "roughness":0.0,
+      "ior":1.0
+    },
+    {
+      "id": 3,
+      "type": "Metallic",
+      "ambient": { "r": 0.5, "g": 0.5, "b": 0.5, "a": 1.0 },
+      "diffuse": { "r": 0.0, "g": 1.0, "b": 0.0, "a": 0.0 },
+      "specular": { "r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0 },
+      "color": {"r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0},
+      "shininess": 10.0,
       "albedo": 1.0,
       "reflectivity": 1.0,
       "metallic":1.0,
-      "roughness":0.01
+      "roughness":0.01,
+      "ior":1.0
+    },
+    
+    {
+      "id": 4,
+      "type": "Dielectric",
+      "ambient": { "r": 0.1, "g": 0.1, "b": 0.1, "a": 1.0 },
+      "diffuse": { "r": 0.0, "g": 0.0, "b": 1.0, "a": 1.0 },
+      "specular": { "r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0 },
+      "color": {"r": 0.0, "g": 0.0, "b": 0.0, "a": 1.0},
+      "shininess": 0.0,
+      "albedo": 1.0,
+      "reflectivity": 0.0,
+      "metallic":0.0,
+      "roughness":0.0,
+      "ior":1.5
     }
   ],
   "primatives": [
     {
       "shape": "Sphere",
+      "position": { "x": -3.0, "y": 0.0, "z": 0.0,"w":1.0 },
+      "scale": { "x": 1.0, "y": 1.0, "z": 1.0,"w":0.0 },
+      "rotation": { "x": 0.0, "y": 0.0, "z": 45.0,"w":0 },
+      "materialId": 0
+    },
+    {
+      "shape": "Sphere",
       "position": { "x": 0.0, "y": 0.0, "z": 0.0,"w":1.0 },
       "scale": { "x": 1.0, "y": 1.0, "z": 1.0,"w":0.0 },
       "rotation": { "x": 0.0, "y": 0.0, "z": 45.0,"w":0 },
-      "materialId": 2
+      "materialId": 3
+    },
+    {
+      "shape": "Sphere",
+      "position": { "x": 3.0, "y": 0.0, "z": 0.0,"w":1.0 },
+      "scale": { "x": 1.0, "y": 1.0, "z": 1.0,"w":0.0 },
+      "rotation": { "x": 0.0, "y": 0.0, "z": 45.0,"w":0 },
+      "materialId": 4
     },
     {
       "shape": "Plane",
       "position": { "x": 0.0, "y": 1.0, "z": 0.0,"w":1.0 },
       "scale": { "x": 1.0, "y": 1.0, "z": 1.0,"w":0.0 },
-      "rotation": { "x": 0.0, "y": 0.0, "z": 45.0,"w":0 },
-      "materialId": 1
+      "rotation": { "x": 0.0, "y": 0.0, "z": 0.0,"w":0 },
+      "materialId": 2
     }
   ],
   "lights": [
@@ -74,7 +120,7 @@
       "type":"Point",
       "shape":"Sphere",
       "color": {"r": 1.0, "g": 1.0, "b": 1.0, "a": 1.0},
-      "position": { "x": 0.0, "y": 5.0, "z": 0.0,"w":0.0 },
+      "position": { "x": 15.0, "y": 5.0, "z": 0.0,"w":0.0 },
       "scale": { "x": 0.0, "y": 2.0, "z": 0.0 ,"w":0.0},
       "rotation": { "x": 0.0, "y": 0.0, "z": 0.0,"w":0.0 },
       "intensity": 1.0
