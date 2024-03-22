@@ -161,8 +161,8 @@ float SphereSDF(vec3 point, vec3 center, vec3 scale, vec3 rotationDegrees, vec3 
     float distance = length(localPoint - center) - 1.0;
     return distance;
 }
-float PlaneSDF(vec3 point, vec3 normal, float height){
-    return dot(point,normal) + height;
+float PlaneSDF(vec3 point, vec3 planePosition, vec3 planeNormal) {
+    return dot(point - planePosition, planeNormal);
 }
 float SceneSDF(vec3 point,out int materialId){
     //Loop over all shapes and return the minimum distance
@@ -175,11 +175,8 @@ float SceneSDF(vec3 point,out int materialId){
                 matId = primatives[i].materialId;
                 distance = SphereSDF(point,primatives[i].position.xyz,primatives[i].scale.xyz,primatives[i].rotation.xyz,vec3(0.0));
                 break;
-            case PLANE:
-                matId = primatives[i].materialId;
-                distance = PlaneSDF(point,primatives[i].position.xyz,primatives[i].position.w);
+            default:
                 break;
-            break;
         }
         if(distance < minDistance){
             minDistance = distance;
@@ -293,6 +290,12 @@ vec3 diffuseBRDFWithDirectLighting(Hit hit,vec3 incomingRayDir,vec3 outgoingRayD
     vec3 diffuseColor = vec3(0.0);
     Material material = materials[hit.materialId];
     diffuseColor = material.diffuse.xyz;
+
+    for (int i = 0; i < lights.length(); ++i) {
+        vec3 lightDir = normalize(lights[i].position - hit.point);
+        float NdotL = max(dot(hit.normal, lightDir), 0.0);
+        diffuseColor+= material.diffuse.xyz * lights[i].color.xyz * lights[i].intensity * NdotL;
+    }
     return diffuseColor;
 }
 
@@ -323,7 +326,7 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
             
             // Diffuse BRDF sampling
             vec3 randomDir = normalize(hit.normal + randomHemisphereDirection(hit.normal));
-            vec3 brdf = diffuseBRDFNoDirectLighting(hit, rayDir, randomDir);
+            vec3 brdf = diffuseBRDFWithDirectLighting(hit, rayDir, randomDir);
             
             throughput *= brdf;
             
