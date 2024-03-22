@@ -12,7 +12,6 @@
 #include "nlohmann/json.hpp"
 
 const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
-
 const int WINDOW_X = 1920;
 const int WINDOW_Y = 1080;
 

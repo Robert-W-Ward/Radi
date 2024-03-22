@@ -5,12 +5,7 @@ const int MAX_SHAPES = 50;
 #define BOX 1
 #define PLANE 3
 #define POINT_LIGHT 999
-#define RECIPROCAL_PI 0.3183098861837907
-#define RECIPROCAL_2PI 0.15915494309189535
-const float PI = 3.14159265358;
 out vec4 FragColor;
-
-
 uniform int VP_X;  
 uniform int VP_Y;
 uniform bool isDebug;
@@ -21,6 +16,9 @@ const int METALLIC = 1;
 const int DIELECTRIC = 2;
 const int MAX_RAY_DEPTH = 10;
 const vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
+const float RECIPROCAL_PI = 0.3183098861837907;
+const float RECIPROCAL_2PI = 0.15915494309189535;
+const float PI = 3.14159;
 ///////////////////////////////
 ///         Structs         ///
 ///////////////////////////////
@@ -74,12 +72,12 @@ struct Light{
 };
 
 ///////////////////////////////
-///    Function Definitions ///
+///   Function Declarations ///
 ///////////////////////////////
 float SceneSDF(vec3 point,out int materialId);
 void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit);
 ///////////////////////////////
-///      SSBOs              ///
+///           SSBOs         ///
 ///////////////////////////////
 layout(std430, binding = 0) buffer PrimativeBuffer{ 
     Primative primatives[];
@@ -137,24 +135,6 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 float fresnelSchlick90(float cosTheta, float F0, float F90) {
   return F0 + (F90 - F0) * pow(1.0 - cosTheta, 5.0);
 } 
-float ggxNDF(float NoH, float roughness) {
-    // GGX normal distribution function - Trowbridge-Reitz
-    float alpha = roughness * roughness;
-    float alpha2 = alpha * alpha;
-    float denom = ((NoH * NoH) * (alpha2 -1.0) + 1.0);
-    return alpha2 / (PI * (denom * denom));
-}
-float geometrySchlickGGX(float NoV, float roughness){
-    float r = (roughness + 1.0);
-    float k = (r*r)/8.0;
-    float denom = NoV * (1.0-k)+k;
-    return NoV/denom;
-}
-float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness){
-    float NoV = max(dot(N, V), 0.0);
-    float NoL = max(dot(N, L), 0.0);
-    return geometrySchlickGGX(NoV, roughness) * geometrySchlickGGX(NoL, roughness);
-}
 vec3 randomHemisphereDirection(vec3 normal) {
     float u1 = random(gl_FragCoord.xy);
     float u2 = random(gl_FragCoord.xy + vec2(0.0, 1.0));
@@ -191,18 +171,23 @@ vec3 CalculateNormal(vec3 p, float epsilon) {
 
     return normalize(n);
 }
-float distributionGGX(vec3 N, vec3 H, float roughness) {
-    // GGX distribution - Trowbridge-Reitz
-    float a = roughness * roughness;
-    float a2 = a * a;
-    float NdotH = max(dot(N, H), 0.0);
-    float NdotH2 = NdotH * NdotH;
-
-    float nom = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = 3.14159 * (denom * denom);
-
-    return nom / max(denom, 0.0000001);
+float ggxNDF(float NoH, float roughness) {
+    // GGX normal distribution function - Trowbridge-Reitz
+    float alpha = roughness * roughness;
+    float alpha2 = alpha * alpha;
+    float denom = ((NoH * NoH) * (alpha2 -1.0) + 1.0);
+    return alpha2 / (PI * (denom * denom));
+}
+float geometrySchlickGGX(float NoV, float roughness){
+    float r = (roughness + 1.0);
+    float k = (r*r)/8.0;
+    float denom = NoV * (1.0-k)+k;
+    return NoV/denom;
+}
+float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness){
+    float NoV = max(dot(N, V), 0.0);
+    float NoL = max(dot(N, L), 0.0);
+    return geometrySchlickGGX(NoV, roughness) * geometrySchlickGGX(NoL, roughness);
 }
 bool inShadow(vec3 point, vec3 lightPosition) {
     vec3 shadowRayDirection = normalize(lightPosition - point);
@@ -290,6 +275,7 @@ float SceneSDF(vec3 point,out int materialId){
 ///           BRDFs              ///
 ////////////////////////////////////
 vec3 specularBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, vec3 specularColor, float shininess) {
+    // Phong specular component
     vec3 reflectDir = reflect(-lightDir, normal);
     float specAngle = max(dot(reflectDir, viewDir), 0.0);
     float specFactor = pow(specAngle, shininess); 
@@ -381,21 +367,23 @@ void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit) {
 vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
     vec3 throughput = vec3(1.0);
     vec3 radiance = vec3(0.0);
+    Light light = lights[0];
     for (int depth = 0; depth < MAX_RAY_DEPTH; ++depth) {
         Hit hit;
         rayIntersect(rayOrigin, rayDir, hit);
 
         if (hit.distance > 0.0) {
             Material material = materials[hit.materialId];
+            vec3 randomDir = normalize(hit.normal + randomHemisphereDirection(hit.normal));
+
             // Russian Roulette termination
             if (depth > 3) {
-                float p = max(material.diffuse.x, max(material.diffuse.y, material.diffuse.z));
+                float p = (throughput.x + throughput.y + throughput.z)/3.0;
                 if (random(gl_FragCoord.xy + depth) > p) {
                     break;                
                 }
                 throughput /= p;
             }
-            vec3 randomDir = normalize(hit.normal + randomHemisphereDirection(hit.normal));
             vec3 L = normalize(lights[0].position.xyz - hit.point);
             vec3 V = normalize(-rayDir);
             vec3 N = normalize(hit.normal);  
@@ -449,7 +437,7 @@ void main(){
 
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
     vec3 finalColor = vec3(0.0);
-    int numSamples = 8;
+    int numSamples = 16;
 
     for (int i = 0; i < numSamples; ++i) {
         vec2 jitter = vec2(random(gl_FragCoord.xy + i * vec2(time, time)), random(gl_FragCoord.xy + i * vec2(time, time) + vec2(12.9898, 78.233))) * 2.0 - 1.0;
