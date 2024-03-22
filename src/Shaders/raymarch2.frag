@@ -7,6 +7,7 @@ const int MAX_SHAPES = 50;
 #define POINT_LIGHT 999
 #define RECIPROCAL_PI 0.3183098861837907
 #define RECIPROCAL_2PI 0.15915494309189535
+const float PI = 3.14159265358;
 out vec4 FragColor;
 
 
@@ -131,7 +132,28 @@ float random(vec2 st){
     return fract(sin(dot(st.xy, vec2(12.9898,78.233)))* 43758.5453123);
 }
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+  return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+float fresnelSchlick90(float cosTheta, float F0, float F90) {
+  return F0 + (F90 - F0) * pow(1.0 - cosTheta, 5.0);
+} 
+float ggxNDF(float NoH, float roughness) {
+    // GGX normal distribution function - Trowbridge-Reitz
+    float alpha = roughness * roughness;
+    float alpha2 = alpha * alpha;
+    float denom = ((NoH * NoH) * (alpha2 -1.0) + 1.0);
+    return alpha2 / (PI * (denom * denom));
+}
+float geometrySchlickGGX(float NoV, float roughness){
+    float r = (roughness + 1.0);
+    float k = (r*r)/8.0;
+    float denom = NoV * (1.0-k)+k;
+    return NoV/denom;
+}
+float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness){
+    float NoV = max(dot(N, V), 0.0);
+    float NoL = max(dot(N, L), 0.0);
+    return geometrySchlickGGX(NoV, roughness) * geometrySchlickGGX(NoL, roughness);
 }
 vec3 randomHemisphereDirection(vec3 normal) {
     float u1 = random(gl_FragCoord.xy);
@@ -265,36 +287,8 @@ float SceneSDF(vec3 point,out int materialId){
     return minDistance;
 }
 ////////////////////////////////////
-///        Path tracing          ///
-////////////////////////////////////
-void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit) {
-    float tMin = 0.01;
-    float tMax = 1000.0;
-    
-    while (tMin < tMax) {
-        vec3 point = rayOrigin + rayDir * tMin;
-        int materialId = 0;
-        float distance = SceneSDF(point, materialId);
-        
-        if (distance < 0.001) {
-            hit.distance = distance;
-            hit.point = point;
-            hit.normal = CalculateNormal(point, 0.001);
-            hit.materialId = materialId;
-            return;
-        }
-        
-        tMin += distance;
-    }
-    
-    hit.distance = -1.0; 
-}
-////////////////////////////////////
 ///           BRDFs              ///
 ////////////////////////////////////
-vec3 dielectricBRDF(Hit hit, vec3 V, vec3 L) {
-    return vec3(0.0);
-}
 vec3 specularBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, vec3 specularColor, float shininess) {
     vec3 reflectDir = reflect(-lightDir, normal);
     float specAngle = max(dot(reflectDir, viewDir), 0.0);
@@ -331,9 +325,59 @@ vec3 modifiedPhongBRDF(vec3 lightDir, vec3 viewDir, vec3 normal,
   color += pow(specDot, phongShininess) * normalization * phongSpecularCol;
   return color;
 }
+vec3 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo,float roughness,float metallic,vec3 F0){
+    vec3 H = normalize(V + L);
+    float NoL = max(dot(N, L), 0.0);
+    float NoV = max(dot(N, V), 0.0);
+    float NoH = max(dot(N, H), 0.0);
+    float HoV = max(dot(H, V), 0.0);
+
+    // Fresnel
+    vec3 F = fresnelSchlick(HoV, F0);
+
+    // Normal Distribution Function
+    float D = ggxNDF(roughness, NoH);
+
+    // Geometry Function
+    float G = geometrySmith(N, V, L, roughness);
+
+    // Specular term
+    vec3 numerator  = D * G * F;
+    float denominator = 4.0 * NoV * NoL + 0.0001;
+    vec3 specular = numerator / denominator;
+
+    // Lambertian diffuse term for non-metals
+    vec3 diffuse = albedo / PI;
+
+    // Combine and factor in metallicness
+    vec3 brdf = (1.0 - metallic) * diffuse + specular;
+    return brdf ;
+}
 ////////////////////////////////////
 ///        Path tracing          ///
 ////////////////////////////////////
+void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit) {
+    float tMin = 0.01;
+    float tMax = 1000.0;
+    
+    while (tMin < tMax) {
+        vec3 point = rayOrigin + rayDir * tMin;
+        int materialId = 0;
+        float distance = SceneSDF(point, materialId);
+        
+        if (distance < 0.001) {
+            hit.distance = distance;
+            hit.point = point;
+            hit.normal = CalculateNormal(point, 0.001);
+            hit.materialId = materialId;
+            return;
+        }
+        
+        tMin += distance;
+    }
+    
+    hit.distance = -1.0; 
+}
 vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
     vec3 throughput = vec3(1.0);
     vec3 radiance = vec3(0.0);
@@ -351,15 +395,48 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
                 }
                 throughput /= p;
             }
-            
-            // Diffuse BRDF sampling
             vec3 randomDir = normalize(hit.normal + randomHemisphereDirection(hit.normal));
-            vec3 diffusebrdf = diffuseBRDFWithDirectLighting(hit, rayDir, randomDir);
-            vec3 specBRDF = specularBRDF(lights[0].position.xyz - hit.point, -rayDir, hit.normal, material.specular.xyz, material.shininess);
-            throughput *= (specBRDF + diffusebrdf) * RECIPROCAL_PI;
-            
-            rayOrigin = hit.point + randomDir * 0.001;
-            rayDir = randomDir;
+            vec3 L = normalize(lights[0].position.xyz - hit.point);
+            vec3 V = normalize(-rayDir);
+            vec3 N = normalize(hit.normal);  
+            float F0;
+            if (material.type == METALLIC) {
+                F0 = (material.color.x + material.color.y + material.color.z) / 3.0;
+            } else if (material.type == DIELECTRIC) {
+                F0 = pow((material.ior - 1.0) / (material.ior + 1.0), 2.0);
+            } else {
+                F0 = 0.04; // Default F0 for other materials
+            }
+
+            vec3 brdf = vec3(0.0);
+            if (material.type == METALLIC || material.type == DIELECTRIC) {
+                // Cook-Torrance BRDF for metallic and dielectric materials
+                brdf = diffuseBRDFWithDirectLighting(hit, rayDir, L) + diffuseBRDFNoDirectLighting(hit, rayDir,randomDir ) + cookTorranceBRDF(hit.normal, V, L, vec3(1.0), material.roughness, material.metallic, vec3(F0));
+            } else {
+                // Diffuse BRDF for other materials
+                randomDir = normalize(hit.normal + randomHemisphereDirection(hit.normal));
+                brdf = diffuseBRDFWithDirectLighting(hit, rayDir, randomDir) + diffuseBRDFNoDirectLighting(hit, rayDir, randomDir) * RECIPROCAL_PI;
+            }
+            float NoL = max(dot(hit.normal,L),0.0);
+            throughput *= brdf * NoL;
+
+
+            if (material.type == DIELECTRIC) {
+                // Handle refraction for dielectric materials
+                float cosTheta = min(dot(-rayDir, hit.normal), 1.0);
+                float F = fresnelSchlick90(cosTheta, F0, 1.0);
+                if (random(gl_FragCoord.xy + depth) < F) {
+                    // Reflection
+                    rayDir = reflect(rayDir, hit.normal);
+                } else {
+                    // Refraction
+                    rayDir = refractRay(rayDir, hit.normal, material.ior);
+                }
+            } else if(material.type == METALLIC) {
+                // Reflection for metallic materials
+                rayDir = reflect(rayDir, hit.normal);
+            }
+            rayOrigin = hit.point + rayDir * 0.001;
             
         } else {
             radiance += throughput * BackgroundColor.xyz; break;
@@ -368,8 +445,6 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
     
     return radiance;
 }
-
-
 void main(){
 
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
