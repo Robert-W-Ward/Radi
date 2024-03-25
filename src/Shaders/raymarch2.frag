@@ -16,7 +16,7 @@ const int LAMBERTIAN = 0;
 const int METALLIC = 1;
 const int DIELECTRIC = 2;
 const int MAX_RAY_DEPTH = 10;
-const vec4 BackgroundColor = vec4(1.0,0.5,0.5,1.0);
+const vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
 const float RECIPROCAL_PI = 0.3183098861837907;
 const float RECIPROCAL_2PI = 0.15915494309189535;
 const float PI = 3.14159;
@@ -299,28 +299,6 @@ vec3 diffuseBRDFDirect(vec3 N, vec3 V, vec3 L, vec3 point, int matId, float F0) 
 vec3 diffuseBRDFIndirect(vec3 N, vec3 V, vec3 L, vec3 point, int matId,float F0) {
     return materials[matId].diffuse.xyz;
 }
-// vec3 PhongBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, 
-//                 vec3 phongDiffuseCol, vec3 phongSpecularCol, float phongShininess) {
-//   vec3 color = phongDiffuseCol * RECIPROCAL_PI;
-//   vec3 reflectDir = reflect(-lightDir, normal);
-//   float specDot = max(dot(reflectDir, viewDir), 0.001);
-//   float normalization = (phongShininess + 2.0) * RECIPROCAL_2PI; 
-//   color += pow(specDot, phongShininess) * normalization * phongSpecularCol;
-//   return color;
-// }
-vec3 phongBRDF(vec3 N, vec3 V, vec3 L, vec3 point, int matId, float F0) {
-    Material mat = materials[matId];
-    vec3 phongDiffuseCol = mat.diffuse.rgb; // Assuming
-    vec3 phongSpecularCol = mat.specular.rgb; // Assuming
-    float phongShininess = mat.shininess; // Assuming
-    vec3 color = phongDiffuseCol * RECIPROCAL_PI;
-    vec3 reflectDir = reflect(-L, N);
-    float specDot = max(dot(reflectDir, V), 0.001);
-    float normalization = (phongShininess + 2.0) * RECIPROCAL_2PI;
-    color += pow(specDot, phongShininess) * normalization * phongSpecularCol;
-    return color;
-}
-
 vec3 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 point, int matId ,vec3 F0){
     Material mat = materials[matId];
     vec3 albedo = mat.diffuse.rgb;
@@ -454,8 +432,9 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
                 } else {
                     // Refraction
                     // need to sample from some distribution
-                    vec3 k = refractRay(rayDir, hit.normal, material.ior);
-                    if(k.x == 0.0){
+
+                    vec3 k = refract(rayDir, hit.normal, material.ior);
+                    if(length(k) == 0.0){
                         rayDir = reflect(rayDir,hit.normal);
                     }else{
                         rayDir = k;
