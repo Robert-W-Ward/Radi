@@ -12,6 +12,8 @@
 #include "nlohmann/json.hpp"
 
 const std::string PROJECT_ROOT = "C:\\Users\\Robert Ward\\source\\repos\\Radi\\src";
+const std::string ALT_PROJECT_ROOT = "C:\\Users\\robert.ward\\source\\repos\\Test\\Radi\\src";
+
 const int WINDOW_X = 1920;
 const int WINDOW_Y = 1080;
 
@@ -30,8 +32,8 @@ int main() {
 
     // Create shader
     std::unique_ptr<Radi::Types::Shader> shader = std::make_unique<Radi::Types::Shader>(
-        (PROJECT_ROOT + "\\Shaders\\raymarch.vert").c_str(), 
-        (PROJECT_ROOT + "\\shaders\\raymarch2.frag").c_str());
+        (ALT_PROJECT_ROOT + "\\Shaders\\raymarch.vert").c_str(), 
+        (ALT_PROJECT_ROOT + "\\shaders\\raymarch2.frag").c_str());
     shader->use();
     shader->setInt("VP_X", WINDOW_X);
     shader->setInt("VP_Y", WINDOW_Y);
@@ -39,7 +41,7 @@ int main() {
 
     // Create, load and configure the scene
     Radi::Types::Scene* scene = new Radi::Types::Scene();
-    scene->LoadSceneFromFile((PROJECT_ROOT + "\\Scenes\\BRDFScene.json").c_str());
+    scene->LoadSceneFromFile((ALT_PROJECT_ROOT + "\\Scenes\\BRDFScene.json").c_str());
     scene->SetActiveShader(std::move(shader));
     scene->Configure();
     glEnable(GL_DEPTH_TEST);

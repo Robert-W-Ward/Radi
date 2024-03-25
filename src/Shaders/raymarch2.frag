@@ -9,13 +9,14 @@ out vec4 FragColor;
 uniform int VP_X;  
 uniform int VP_Y;
 uniform bool isDebug;
+bool useDirectLighting = true;;
 uniform float time;
 
 const int LAMBERTIAN = 0;
 const int METALLIC = 1;
 const int DIELECTRIC = 2;
 const int MAX_RAY_DEPTH = 10;
-const vec4 BackgroundColor = vec4(0.5,0.5,0.5,1.0);
+const vec4 BackgroundColor = vec4(1.0,0.5,0.5,1.0);
 const float RECIPROCAL_PI = 0.3183098861837907;
 const float RECIPROCAL_2PI = 0.15915494309189535;
 const float PI = 3.14159;
@@ -271,44 +272,61 @@ float SceneSDF(vec3 point,out int materialId){
 ////////////////////////////////////
 ///           BRDFs              ///
 ////////////////////////////////////
-vec3 specularBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, vec3 specularColor, float shininess) {
+vec3 specularBRDF(vec3 N, vec3 V, vec3 L,vec3 point, int matId, float F0 ) {
     // Phong specular component
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float specAngle = max(dot(reflectDir, viewDir), 0.0);
+    Material mat = materials[matId];
+    vec3 specularColor = mat.specular.xyz;
+    float shininess = mat.shininess;
+    vec3 reflectDir = reflect(-L, N);
+    float specAngle = max(dot(reflectDir, V), 0.0);
     float specFactor = pow(specAngle, shininess); 
-    return specularColor * specFactor; 
+    return specularColor * specFactor;
 }
-vec3 diffuseBRDFNoDirectLighting(Hit hit,vec3 incomingRayDir,vec3 outgoingRayDir) {
+vec3 diffuseBRDFDirect(vec3 N, vec3 V, vec3 L, vec3 point, int matId, float F0) {
+    Material mat = materials[matId];
     vec3 diffuseColor = vec3(0.0);
-    Material material = materials[hit.materialId];
-    diffuseColor = material.diffuse.xyz;
-    return diffuseColor;
-}
-vec3 diffuseBRDFWithDirectLighting(Hit hit,vec3 incomingRayDir,vec3 outgoingRayDir) {
-    vec3 diffuseColor = vec3(0.0);
-    Material material = materials[hit.materialId];
-    diffuseColor = material.diffuse.xyz;
 
-    for (int i = 0; i < lights.length(); ++i) {
-        vec3 lightDir = normalize(lights[i].position.xyz - hit.point);
-        float NdotL = max(dot(hit.normal, lightDir), 0.0);
+    // Compute the dot product of the normal and the light direction
+    float NoL = max(dot(N, L), 0.0);
 
-        if(!inShadow(hit.point, lights[i].position.xyz)){
-            diffuseColor+= material.diffuse.xyz * lights[i].color.xyz * lights[i].intensity * NdotL ;
-        }
+    // If there's a positive contribution, calculate the diffuse component
+    if (NoL > 0.0) {
+        diffuseColor = mat.diffuse.rgb * NoL; // Modulated by the dot product
     }
+    
     return diffuseColor;
 }
-vec3 PhongBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, 
-                vec3 phongDiffuseCol, vec3 phongSpecularCol, float phongShininess) {
-  vec3 color = phongDiffuseCol * RECIPROCAL_PI;
-  vec3 reflectDir = reflect(-lightDir, normal);
-  float specDot = max(dot(reflectDir, viewDir), 0.001);
-  float normalization = (phongShininess + 2.0) * RECIPROCAL_2PI; 
-  color += pow(specDot, phongShininess) * normalization * phongSpecularCol;
-  return color;
+vec3 diffuseBRDFIndirect(vec3 N, vec3 V, vec3 L, vec3 point, int matId,float F0) {
+    return materials[matId].diffuse.xyz;
 }
-vec3 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo,float roughness,float metallic,vec3 F0){
+// vec3 PhongBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, 
+//                 vec3 phongDiffuseCol, vec3 phongSpecularCol, float phongShininess) {
+//   vec3 color = phongDiffuseCol * RECIPROCAL_PI;
+//   vec3 reflectDir = reflect(-lightDir, normal);
+//   float specDot = max(dot(reflectDir, viewDir), 0.001);
+//   float normalization = (phongShininess + 2.0) * RECIPROCAL_2PI; 
+//   color += pow(specDot, phongShininess) * normalization * phongSpecularCol;
+//   return color;
+// }
+vec3 phongBRDF(vec3 N, vec3 V, vec3 L, vec3 point, int matId, float F0) {
+    Material mat = materials[matId];
+    vec3 phongDiffuseCol = mat.diffuse.rgb; // Assuming
+    vec3 phongSpecularCol = mat.specular.rgb; // Assuming
+    float phongShininess = mat.shininess; // Assuming
+    vec3 color = phongDiffuseCol * RECIPROCAL_PI;
+    vec3 reflectDir = reflect(-L, N);
+    float specDot = max(dot(reflectDir, V), 0.001);
+    float normalization = (phongShininess + 2.0) * RECIPROCAL_2PI;
+    color += pow(specDot, phongShininess) * normalization * phongSpecularCol;
+    return color;
+}
+
+vec3 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 point, int matId ,vec3 F0){
+    Material mat = materials[matId];
+    vec3 albedo = mat.diffuse.rgb;
+    float roughness = mat.roughness;
+    float metallic = mat.metallic;
+
     vec3 H = normalize(V + L);
     float NoL = max(dot(N, L), 0.0);
     float NoV = max(dot(N, V), 0.0);
@@ -330,11 +348,21 @@ vec3 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo,float roughness,float 
     vec3 specular = numerator / denominator;
 
     // Lambertian diffuse term for non-metals
-    vec3 diffuse = albedo / PI;
+    vec3 diffuse = (1.0 - metallic) * albedo / PI;
 
     // Combine and factor in metallicness
     vec3 brdf = (1.0 - metallic) * diffuse + specular;
-    return brdf ;
+    return diffuse + specular;
+}
+vec3 evaluateBRDF(vec3 N,vec3 V, vec3 L,vec3 point, int matId, float F0){
+   vec3 brdf = vec3(0.0);
+   Material mat = materials[matId];
+   if(mat.type == METALLIC || mat.type == DIELECTRIC){
+    brdf = cookTorranceBRDF(N,V,L,point,matId,vec3(F0));
+   }else if(mat.type == LAMBERTIAN && useDirectLighting){
+    brdf = diffuseBRDFDirect(N,V,L,point,matId,F0);
+   }
+   return brdf;
 }
 ////////////////////////////////////
 ///        Path tracing          ///
@@ -371,6 +399,9 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
 
         if (hit.distance > 0.0) {
             Material material = materials[hit.materialId];
+            vec3 accumulatedLight = vec3(0.0);
+            vec3 V = normalize(-rayDir);
+            vec3 N = hit.normal;
             vec3 randomDir = normalize(hit.normal + randomHemisphereDirection(hit.normal));
 
             // Russian Roulette termination
@@ -380,10 +411,8 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
                     break;                
                 }
                 throughput /= p;
-            }
-            vec3 L = normalize(lights[0].position.xyz - hit.point);
-            vec3 V = normalize(-rayDir);
-            vec3 N = normalize(hit.normal);  
+            }   
+
             float F0;
             if (material.type == METALLIC) {
                 F0 = (material.color.x + material.color.y + material.color.z) / 3.0;
@@ -393,25 +422,31 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
                 F0 = 0.04; // Default F0 for other materials
             }
 
-            vec3 brdf = vec3(0.0);
-            if (material.type == METALLIC || material.type == DIELECTRIC) {
-                // Cook-Torrance BRDF for metallic and dielectric materials
-                brdf = diffuseBRDFWithDirectLighting(hit, rayDir, L) + diffuseBRDFNoDirectLighting(hit, rayDir,randomDir ) + cookTorranceBRDF(hit.normal, V, L, vec3(1.0), material.roughness, material.metallic, vec3(F0));
-            } else {
-                // Diffuse BRDF for other materials
-                brdf = diffuseBRDFNoDirectLighting(hit, rayDir, randomDir) * RECIPROCAL_PI;
-            }
-            float NoL = max(dot(hit.normal,L),0.0);
-            throughput *= brdf * NoL;
+            for (int i = 0; i < lights.length(); ++i) {
+                Light light = lights[i];
+                vec3 L = normalize(light.position.xyz - hit.point); // Light direction
 
+                if (!inShadow(hit.point + N * 0.001, light.position.xyz)) {
+                    vec3 BRDF = vec3(0.0);
+                    if(material.type == METALLIC){
+                        BRDF = cookTorranceBRDF(N,V,L,hit.point,material.id,vec3(F0)) + diffuseBRDFDirect(N,V,L,hit.point,material.id,F0);
+                    }else{
+                        BRDF = evaluateBRDF(N,V,L,hit.point,material.id,F0);
+                    }
+                    accumulatedLight += BRDF * light.color.rgb * light.intensity; // Modulate by light's color and intensity
+                }
+            }            
+            throughput *= accumulatedLight;
+            rayOrigin = hit.point + N * 0.001;
 
             if (material.type == DIELECTRIC) {
                 
                 // Handle refraction for dielectric materials
                 float cosTheta = min(dot(-rayDir, hit.normal), 1.0);
                 float F = fresnelSchlick90(cosTheta, F0, 1.0);
-                //random(gl_FragCoord.xy + depth< F)
-                if (true) { // check if random is between 0 and 1
+                vec4 t= (gl_FragCoord + depth);
+                float rand = random(t.xy);
+                if (rand < F) { // check if random is between 0 and 1
                     // Reflection
                     // need to sample from some distribution
                     rayDir = reflect(rayDir, hit.normal); 
@@ -421,11 +456,11 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
                     rayDir = refractRay(rayDir, hit.normal, material.ior); // is this refraction right?
                 }
             } 
-            // else if(material.type == METALLIC) {
-            //     // Reflection for metallic materials
-            //     rayDir = reflect(rayDir, hit.normal);
-            // }
-            rayOrigin = hit.point + rayDir * 0.001;
+            else if(material.type == METALLIC) {
+                // Reflection for metallic materials
+                rayDir = reflect(rayDir, hit.normal);
+            }
+
             
         } else {
             radiance += throughput * BackgroundColor.xyz; break;
@@ -439,7 +474,6 @@ void main(){
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
     vec3 finalColor = vec3(0.0);
     int numSamples = 16;
-
     for (int i = 0; i < numSamples; ++i) {
         vec2 jitter = vec2(random(gl_FragCoord.xy + i * vec2(time, time)), random(gl_FragCoord.xy + i * vec2(time, time) + vec2(12.9898, 78.233))) * 2.0 - 1.0;
         jitter /= vec2(VP_X, VP_Y);

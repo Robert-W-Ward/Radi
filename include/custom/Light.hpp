@@ -21,14 +21,14 @@
 
         static Light* createFromJson(nlohmann::json lightJson){
             Light* light = new Light();
-            static std::map<std::string, LightType> lightTypeMap = {
+            std::map<std::string, LightType> lightTypeMap = {
                 { "Point", Point },
                 { "Area", Area },
                 { "Directional", Directional }
             };
             light->type = lightTypeMap[lightJson["type"].get<std::string>()];
 
-            static std::map<std::string, Shape> shapeMap{
+            std::map<std::string, Shape> shapeMap{
                 { "Sphere", Sphere },
                 { "Box", Box },
                 { "Triangle", Triangle },
