@@ -13,6 +13,20 @@
             "detail": "CMake template build task"
         },
         {
+            "type":"shell",
+            "label":"CMake: build (Release)",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build", // Adjust this path to your actual build directory
+                "--config",
+                "Release"
+            ],
+            "group":"build",
+            "problemMatcher":[],
+            "detail": "CMake build with optimizations on"
+        },
+        {
             "type": "cmake",
             "label": "CMake: clean",
             "command": "clean",

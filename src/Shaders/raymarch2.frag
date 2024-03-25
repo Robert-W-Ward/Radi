@@ -437,30 +437,38 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
                 }
             }            
             throughput *= accumulatedLight;
-            rayOrigin = hit.point + N * 0.001;
+            
 
             if (material.type == DIELECTRIC) {
                 
                 // Handle refraction for dielectric materials
                 float cosTheta = min(dot(-rayDir, hit.normal), 1.0);
-                float F = fresnelSchlick90(cosTheta, F0, 1.0);
-                vec4 t= (gl_FragCoord + depth);
-                float rand = random(t.xy);
-                if (rand < F) { // check if random is between 0 and 1
+                vec3 F0 = vec3(pow((material.ior - 1.0) / (material.ior + 1.0), 2.0));
+                vec3 F = fresnelSchlick(cosTheta,F0);
+                
+                float rand = random(gl_FragCoord.xy+depth);
+                if (rand < F.x) {
                     // Reflection
                     // need to sample from some distribution
                     rayDir = reflect(rayDir, hit.normal); 
                 } else {
                     // Refraction
                     // need to sample from some distribution
-                    rayDir = refractRay(rayDir, hit.normal, material.ior); // is this refraction right?
+                    vec3 k = refractRay(rayDir, hit.normal, material.ior);
+                    if(k.x == 0.0){
+                        rayDir = reflect(rayDir,hit.normal);
+                    }else{
+                        rayDir = k;
+                    }
+
                 }
             } 
             else if(material.type == METALLIC) {
                 // Reflection for metallic materials
                 rayDir = reflect(rayDir, hit.normal);
             }
-
+            
+            rayOrigin = hit.point + rayDir * 0.001;
             
         } else {
             radiance += throughput * BackgroundColor.xyz; break;
@@ -473,7 +481,7 @@ void main(){
 
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
     vec3 finalColor = vec3(0.0);
-    int numSamples = 16;
+    int numSamples = 64;
     for (int i = 0; i < numSamples; ++i) {
         vec2 jitter = vec2(random(gl_FragCoord.xy + i * vec2(time, time)), random(gl_FragCoord.xy + i * vec2(time, time) + vec2(12.9898, 78.233))) * 2.0 - 1.0;
         jitter /= vec2(VP_X, VP_Y);
