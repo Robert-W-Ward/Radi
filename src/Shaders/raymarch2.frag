@@ -197,9 +197,6 @@ bool inShadow(vec3 point, vec3 lightPosition) {
     rayIntersect(point + shadowRayDirection * 0.001, shadowRayDirection, shadowHit);
     return shadowHit.distance > 0.0 && shadowHit.distance < distanceToLight;
 }
-vec3 reflectRay(vec3 incident, vec3 normal) {
-    return incident - 2.0 * dot(incident, normal) * normal;
-}
 vec3 refractRay(vec3 I, vec3 N, float ior) {
     float cosI = clamp(-1.0, 1.0, dot(I, N));
     float etaI = 1.0, etaT = ior;
@@ -302,7 +299,7 @@ vec3 diffuseBRDFWithDirectLighting(Hit hit,vec3 incomingRayDir,vec3 outgoingRayD
     }
     return diffuseColor;
 }
-vec3 modifiedPhongBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, 
+vec3 PhongBRDF(vec3 lightDir, vec3 viewDir, vec3 normal, 
                 vec3 phongDiffuseCol, vec3 phongSpecularCol, float phongShininess) {
   vec3 color = phongDiffuseCol * RECIPROCAL_PI;
   vec3 reflectDir = reflect(-lightDir, normal);
@@ -402,28 +399,32 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
                 brdf = diffuseBRDFWithDirectLighting(hit, rayDir, L) + diffuseBRDFNoDirectLighting(hit, rayDir,randomDir ) + cookTorranceBRDF(hit.normal, V, L, vec3(1.0), material.roughness, material.metallic, vec3(F0));
             } else {
                 // Diffuse BRDF for other materials
-                randomDir = normalize(hit.normal + randomHemisphereDirection(hit.normal));
-                brdf = diffuseBRDFWithDirectLighting(hit, rayDir, randomDir) + diffuseBRDFNoDirectLighting(hit, rayDir, randomDir) * RECIPROCAL_PI;
+                brdf = diffuseBRDFNoDirectLighting(hit, rayDir, randomDir) * RECIPROCAL_PI;
             }
             float NoL = max(dot(hit.normal,L),0.0);
             throughput *= brdf * NoL;
 
 
             if (material.type == DIELECTRIC) {
+                
                 // Handle refraction for dielectric materials
                 float cosTheta = min(dot(-rayDir, hit.normal), 1.0);
                 float F = fresnelSchlick90(cosTheta, F0, 1.0);
-                if (random(gl_FragCoord.xy + depth) < F) {
+                //random(gl_FragCoord.xy + depth< F)
+                if (true) { // check if random is between 0 and 1
                     // Reflection
-                    rayDir = reflect(rayDir, hit.normal);
+                    // need to sample from some distribution
+                    rayDir = reflect(rayDir, hit.normal); 
                 } else {
                     // Refraction
-                    rayDir = refractRay(rayDir, hit.normal, material.ior);
+                    // need to sample from some distribution
+                    rayDir = refractRay(rayDir, hit.normal, material.ior); // is this refraction right?
                 }
-            } else if(material.type == METALLIC) {
-                // Reflection for metallic materials
-                rayDir = reflect(rayDir, hit.normal);
-            }
+            } 
+            // else if(material.type == METALLIC) {
+            //     // Reflection for metallic materials
+            //     rayDir = reflect(rayDir, hit.normal);
+            // }
             rayOrigin = hit.point + rayDir * 0.001;
             
         } else {
