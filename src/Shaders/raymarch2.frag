@@ -327,26 +327,18 @@ vec3 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 point, int matId ,vec3 F0){
 
     // Lambertian diffuse term for non-metals
     vec3 diffuse = (1.0 - metallic) * albedo / PI;
-
+    if (metallic > 0.0) {
+        specular = specular * albedo;
+    }
     // Combine and factor in metallicness
-    vec3 brdf = (1.0 - metallic) * diffuse + specular;
-    return diffuse + specular;
-}
-vec3 evaluateBRDF(vec3 N,vec3 V, vec3 L,vec3 point, int matId, float F0){
-   vec3 brdf = vec3(0.0);
-   Material mat = materials[matId];
-   if(mat.type == METALLIC || mat.type == DIELECTRIC){
-    brdf = cookTorranceBRDF(N,V,L,point,matId,vec3(F0));
-   }else if(mat.type == LAMBERTIAN && useDirectLighting){
-    brdf = diffuseBRDFDirect(N,V,L,point,matId,F0);
-   }
-   return brdf;
+    vec3 brdf = diffuse + specular;
+    return brdf;
 }
 ////////////////////////////////////
 ///        Path tracing          ///
 ////////////////////////////////////
 void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit) {
-    float tMin = 0.01;
+    float tMin = 0.1;
     float tMax = 1000.0;
     
     while (tMin < tMax) {
@@ -406,10 +398,10 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
 
                 if (!inShadow(hit.point + N * 0.001, light.position.xyz)) {
                     vec3 BRDF = vec3(0.0);
-                    if(material.type == METALLIC){
-                        BRDF = cookTorranceBRDF(N,V,L,hit.point,material.id,vec3(F0)) + diffuseBRDFDirect(N,V,L,hit.point,material.id,F0);
+                    if(material.type == METALLIC || material.type == DIELECTRIC){
+                        BRDF = cookTorranceBRDF(N,V,L,hit.point,material.id,vec3(F0));
                     }else{
-                        BRDF = evaluateBRDF(N,V,L,hit.point,material.id,F0);
+                        BRDF = diffuseBRDFDirect( N, V,  L, hit.point,  material.id, F0);
                     }
                     accumulatedLight += BRDF * light.color.rgb * light.intensity; // Modulate by light's color and intensity
                 }
@@ -432,8 +424,8 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
                 } else {
                     // Refraction
                     // need to sample from some distribution
-
-                    vec3 k = refract(rayDir, hit.normal, material.ior);
+                    float eta = dot(rayDir,hit.normal) > 0.0?(1.0/material.ior):material.ior;
+                    vec3 k = refract(rayDir, hit.normal, eta);
                     if(length(k) == 0.0){
                         rayDir = reflect(rayDir,hit.normal);
                     }else{
