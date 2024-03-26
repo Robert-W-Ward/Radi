@@ -52,7 +52,7 @@
       "albedo": 1.0,
       "reflectivity": 1.0,
       "metallic":1.0,
-      "roughness":0.2,
+      "roughness":0.8,
       "ior":1.0
     },
     {
@@ -66,8 +66,8 @@
       "albedo": 1.0,
       "reflectivity": 1.0,
       "metallic":0.0,
-      "roughness":0.2,
-      "ior":1.33
+      "roughness":0.02,
+      "ior":1.5
     }
   ],
   "primatives": [

@@ -179,6 +179,22 @@ float ggxNDF(float NoH, float roughness) {
     float denom = ((NoH * NoH) * (alpha2 -1.0) + 1.0);
     return alpha2 / (PI * (denom * denom));
 }
+vec3 importanceSampleGGX(vec2 Xi, vec3 N, float roughness) {
+    float a = roughness*roughness;
+    float phi = 2.0 * PI * Xi.x;
+    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+    float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
+    vec3 H;
+    H.x = cos(phi) * sinTheta;
+    H.y = sin(phi) * sinTheta;
+    H.z = cosTheta;
+    vec3 up = abs(N.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+    vec3 tangent = normalize(cross(up, N));
+    vec3 bitangent = cross(N, tangent);
+    vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
+    return normalize(sampleVec);
+}
+
 float geometrySchlickGGX(float NoV, float roughness){
     float r = (roughness + 1.0);
     float k = (r*r)/8.0;
@@ -197,25 +213,6 @@ bool inShadow(vec3 point, vec3 lightPosition) {
     
     rayIntersect(point + shadowRayDirection * 0.001, shadowRayDirection, shadowHit);
     return shadowHit.distance > 0.0 && shadowHit.distance < distanceToLight;
-}
-vec3 refractRay(vec3 I, vec3 N, float ior) {
-    float cosI = clamp(-1.0, 1.0, dot(I, N));
-    float etaI = 1.0, etaT = ior;
-    vec3 n = N;
-    if (cosI < 0.0) { cosI = -cosI; } else 
-    { 
-        float temp = etaI;
-        etaI = etaT;
-        etaT = temp;
-        n = -N;
-    }
-    float eta = etaI / etaT;
-    float k = 1.0 - eta * eta * (1.0 - cosI * cosI);
-    if (k < 0.0) {
-        return vec3(0.0);
-    }else{
-        return eta * I + (eta * cosI - sqrt(k)) * n;
-    }
 }
 
 ////////////////////////////////////
@@ -374,6 +371,7 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
             vec3 N = hit.normal;
             vec3 randomDir = normalize(hit.normal + randomHemisphereDirection(hit.normal));
 
+            
             // Russian Roulette termination
             if (depth > 3) {
                 float p = (throughput.x + throughput.y + throughput.z)/3.0;
@@ -391,56 +389,30 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
             } else {
                 F0 = 0.04; // Default F0 for other materials
             }
+            vec3 F = fresnelSchlick(max(dot(N, V), 0.0), vec3(F0));
 
-            for (int i = 0; i < lights.length(); ++i) {
-                Light light = lights[i];
-                vec3 L = normalize(light.position.xyz - hit.point); // Light direction
+            // Sample light direction based on BRDF
+            vec2 Xi = vec2(random(gl_FragCoord.xy + vec2(depth, 42.0)), random(gl_FragCoord.xy + vec2(depth, 42.0)));
+            vec3 L;
+            if(material.type == METALLIC || material.type == DIELECTRIC) {
+                vec3 H = importanceSampleGGX(Xi, N, material.roughness);
+                L = normalize(2.0 * dot(V, H) * H - V);
+            } else {
+                L = randomHemisphereDirection(N);
+            }
 
-                if (!inShadow(hit.point + N * 0.001, light.position.xyz)) {
-                    vec3 BRDF = vec3(0.0);
-                    if(material.type == METALLIC || material.type == DIELECTRIC){
-                        BRDF = cookTorranceBRDF(N,V,L,hit.point,material.id,vec3(F0));
-                    }else{
-                        BRDF = diffuseBRDFDirect( N, V,  L, hit.point,  material.id, F0);
-                    }
-                    accumulatedLight += BRDF * light.color.rgb * light.intensity; // Modulate by light's color and intensity
-                }
-            }            
-            throughput *= accumulatedLight;
-            
-
-            if (material.type == DIELECTRIC) {
-                
-                // Handle refraction for dielectric materials
-                float cosTheta = min(dot(-rayDir, hit.normal), 1.0);
-                vec3 F0 = vec3(pow((material.ior - 1.0) / (material.ior + 1.0), 2.0));
-                vec3 F = fresnelSchlick(cosTheta,F0);
-                
-                float rand = random(gl_FragCoord.xy+depth);
-                if (rand < F.x) {
-                    // Reflection
-                    // need to sample from some distribution
-                    rayDir = reflect(rayDir, hit.normal); 
-                } else {
-                    // Refraction
-                    // need to sample from some distribution
-                    float eta = dot(rayDir,hit.normal) > 0.0?(1.0/material.ior):material.ior;
-                    vec3 k = refract(rayDir, hit.normal, eta);
-                    if(length(k) == 0.0){
-                        rayDir = reflect(rayDir,hit.normal);
-                    }else{
-                        rayDir = k;
-                    }
-
-                }
-            } 
-            else if(material.type == METALLIC) {
-                // Reflection for metallic materials
-                rayDir = reflect(rayDir, hit.normal);
+            float NoL = max(dot(N, L), 0.0);
+            vec3 BRDF;
+            if(material.type == METALLIC || material.type == DIELECTRIC) {
+                BRDF = (cookTorranceBRDF(N, V, L, hit.point, material.id, vec3(F0)) * F) + vec3(1.0);
+            } else {
+                BRDF = diffuseBRDFDirect(N, V, L, hit.point, material.id, F0);
             }
             
-            rayOrigin = hit.point + rayDir * 0.001;
-            
+            throughput *= BRDF * NoL / (0.5 + 0.5 * Xi.y); // Weight by BRDF and probability density function
+            rayDir = L;
+            rayOrigin = hit.point + N * 0.001;
+
         } else {
             radiance += throughput * BackgroundColor.xyz; break;
         }
@@ -452,7 +424,7 @@ void main(){
 
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
     vec3 finalColor = vec3(0.0);
-    int numSamples = 64;
+    int numSamples = 128;
     for (int i = 0; i < numSamples; ++i) {
         vec2 jitter = vec2(random(gl_FragCoord.xy + i * vec2(time, time)), random(gl_FragCoord.xy + i * vec2(time, time) + vec2(12.9898, 78.233))) * 2.0 - 1.0;
         jitter /= vec2(VP_X, VP_Y);
