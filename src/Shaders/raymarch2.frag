@@ -95,44 +95,19 @@ layout(std430, binding = 3) buffer CameraBuffer{
 //////////////////////////////////
 ///      Utility Functions     ///
 //////////////////////////////////
-// Utility function to convert degrees to radians
-float degreesToRadians(float degrees) {
-    return degrees * (3.141592653589793 / 180.0);
-}
-vec3 rotateX(vec3 p, float angle) {
-    float s = sin(angle);
-    float c = cos(angle);
-    return vec3(p.x, c*p.y - s*p.z, s*p.y + c*p.z);
-}
-// Utility function to rotate a point around the Y axis
-vec3 rotateY(vec3 p, float angle) {
-    float s = sin(angle);
-    float c = cos(angle);
-    return vec3(c*p.x + s*p.z, p.y, -s*p.x + c*p.z);
-}
-// Utility function to rotate a point around the Z axis
-vec3 rotateZ(vec3 p, float angle) {
-    float s = sin(angle);
-    float c = cos(angle);
-    return vec3(c*p.x - s*p.y, s*p.x + c*p.y, p.z);
-}
-// Function to rotate a point around an arbitrary axis
-vec3 rotatePoint(vec3 p, vec3 rotationDegrees) {
-    // Convert rotation from degrees to radians
-    vec3 rotationRadians = vec3(degreesToRadians(rotationDegrees.x), degreesToRadians(rotationDegrees.y), degreesToRadians(rotationDegrees.z));
-    
-    // Apply rotations in radians
-    p = rotateX(p, rotationRadians.x);
-    p = rotateY(p, rotationRadians.y);
-    p = rotateZ(p, rotationRadians.z);
-    return p;
-}
+
 float random(vec2 st){
     return fract(sin(dot(st.xy, vec2(12.9898,78.233)))* 43758.5453123);
 }
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
   return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
+float fresnelFraction(float cosTheta,float ior){
+    float r0 = (1-ior)/(1+ior);
+    r0 = r0*r0;
+    return r0 + (1-r0)*pow((1-cosTheta),5);
+}
+
 float fresnelSchlick90(float cosTheta, float F0, float F90) {
   return F0 + (F90 - F0) * pow(1.0 - cosTheta, 5.0);
 } 
@@ -226,7 +201,7 @@ float SphereSDF(vec3 point, vec3 center, vec3 scale, vec3 rotationDegrees, vec3 
 float BoxSDF(vec3 point, vec3 position, vec3 scale, vec3 rotationDegrees) {
     // Transform the point into the box's local coordinate space
     vec3 localPoint = point - position;
-    localPoint = rotatePoint(localPoint, -rotationDegrees); // Inverse rotation to align the point with the box
+    //localPoint = rotatePoint(localPoint, -rotationDegrees); // Inverse rotation to align the point with the box
 
     // Apply scale
     vec3 absLocalPoint = abs(localPoint) / scale;
@@ -293,15 +268,10 @@ vec3 diffuseBRDFDirect(vec3 N, vec3 V, vec3 L, vec3 point, int matId, float F0) 
     
     return diffuseColor;
 }
-vec3 diffuseBRDFIndirect(vec3 N, vec3 V, vec3 L, vec3 point, int matId,float F0) {
-    return materials[matId].diffuse.xyz;
+vec3 CookTorrancediffuseBRDF(vec3 albedo,float metallic){
+    return (1.0 - metallic) * albedo/PI;
 }
-vec3 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 point, int matId ,vec3 F0){
-    Material mat = materials[matId];
-    vec3 albedo = mat.diffuse.rgb;
-    float roughness = mat.roughness;
-    float metallic = mat.metallic;
-
+vec3 CookTorrancespecularBRDF(vec3 N, vec3 V, vec3 L, float roughness, vec3 F0, vec3 albedo, float metallic) {
     vec3 H = normalize(V + L);
     float NoL = max(dot(N, L), 0.0);
     float NoV = max(dot(N, V), 0.0);
@@ -318,17 +288,30 @@ vec3 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 point, int matId ,vec3 F0){
     float G = geometrySmith(N, V, L, roughness);
 
     // Specular term
-    vec3 numerator  = D * G * F;
+    vec3 numerator = D * G * F;
     float denominator = 4.0 * NoV * NoL + 0.0001;
     vec3 specular = numerator / denominator;
 
-    // Lambertian diffuse term for non-metals
-    vec3 diffuse = (1.0 - metallic) * albedo / PI;
     if (metallic > 0.0) {
-        specular = specular * albedo;
+        specular *= albedo;
     }
-    // Combine and factor in metallicness
+
+    return specular;
+}
+
+
+vec3 cookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 point, int matId, vec3 F0) {
+    Material mat = materials[matId];
+    vec3 albedo = mat.color.rgb;
+    float roughness = mat.roughness;
+    float metallic = mat.metallic;
+
+    vec3 diffuse = CookTorrancediffuseBRDF(albedo, metallic);
+    vec3 specular = CookTorrancespecularBRDF(N, V, L, roughness, F0, albedo, metallic);
+
+    // Combine diffuse and specular terms
     vec3 brdf = diffuse + specular;
+
     return brdf;
 }
 ////////////////////////////////////
@@ -358,7 +341,7 @@ void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit) {
 }
 vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
     vec3 throughput = vec3(1.0);
-    vec3 radiance = vec3(0.0);
+    vec3 radiance = vec3(0.8);
     Light light = lights[0];
     for (int depth = 0; depth < MAX_RAY_DEPTH; ++depth) {
         Hit hit;
@@ -380,7 +363,6 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
                 }
                 throughput /= p;
             }   
-
             float F0;
             if (material.type == METALLIC) {
                 F0 = (material.color.x + material.color.y + material.color.z) / 3.0;
@@ -389,42 +371,76 @@ vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
             } else {
                 F0 = 0.04; // Default F0 for other materials
             }
-            vec3 F = fresnelSchlick(max(dot(N, V), 0.0), vec3(F0));
 
-            // Sample light direction based on BRDF
-            vec2 Xi = vec2(random(gl_FragCoord.xy + vec2(depth, 42.0)), random(gl_FragCoord.xy + vec2(depth, 42.0)));
-            vec3 L;
-            if(material.type == METALLIC || material.type == DIELECTRIC) {
-                vec3 H = importanceSampleGGX(Xi, N, material.roughness);
-                L = normalize(2.0 * dot(V, H) * H - V);
-            } else {
-                L = randomHemisphereDirection(N);
+
+            if (material.type == LAMBERTIAN) {
+                // Sample indirect lighting for Lambertian materials
+                vec3 indirectLight = vec3(0.0);
+                Hit indirectHit;
+                vec3 L;
+                float pdf = 1.0 / (2.0 * PI);
+                
+                for (int i = 0; i < 4; ++i) {
+                    L = randomHemisphereDirection(N);
+                    rayIntersect(hit.point, L, indirectHit);
+                    
+                    if (indirectHit.distance > 0.0) {
+                        Material indirectMaterial = materials[indirectHit.materialId];
+                        vec3 indirectBRDF = cookTorranceBRDF(indirectHit.normal, -L, -L, indirectHit.point, indirectMaterial.id, vec3(F0));
+                        indirectLight += indirectBRDF * throughput * max(dot(N, L), 0.0);
+                    }
+                }
+                
+                indirectLight /= (float(4) * pdf);
+                
+                vec3 brdf = cookTorranceBRDF(N, V, V, hit.point, material.id, vec3(F0));
+                radiance += throughput * brdf * indirectLight;
+                throughput *= brdf;
+                
+                rayOrigin = hit.point + hit.normal * 0.001;
+                rayDir = randomHemisphereDirection(hit.normal);
+            } else if (material.type == METALLIC) {
+                // Handle reflections for metallic materials
+                vec3 reflectedDir = reflect(rayDir, N);
+                rayOrigin = hit.point + hit.normal * 0.001;
+                rayDir = reflectedDir;
+            } else if (material.type == DIELECTRIC) {
+                // Handle reflections and refractions for dielectric materials
+                float ior = material.ior;
+                bool inside = dot(rayDir, N) > 0.0;
+                float refraction_ratio = inside ? 1.0/ior : ior;
+
+                float cosTheta = min(dot(-normalize(rayDir), normalize(N)), 1.0);
+                float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+                
+                bool cannot_refract = (refraction_ratio * sinTheta) >1.0;
+
+                float reflectance = fresnelFraction(cosTheta,refraction_ratio);
+
+                if (cannot_refract || reflectance > random(gl_FragCoord.xy)) {
+                    // Total internal reflection
+                    vec3 reflectedDir = reflect(rayDir, N);
+                    rayOrigin = hit.point + hit.normal * 0.01;
+                    rayDir = reflectedDir;
+                } else {
+                    // Refraction
+                    vec3 refractedDir = refract(normalize(rayDir), normalize(inside?-N:N), refraction_ratio);
+                    rayOrigin = hit.point - hit.normal * 0.001;
+                    rayDir = refractedDir;
+                    throughput *= 1.0 - reflectance;
+                }
             }
-
-            float NoL = max(dot(N, L), 0.0);
-            vec3 BRDF;
-            if(material.type == METALLIC || material.type == DIELECTRIC) {
-                BRDF = (cookTorranceBRDF(N, V, L, hit.point, material.id, vec3(F0)) * F) + vec3(1.0);
-            } else {
-                BRDF = diffuseBRDFDirect(N, V, L, hit.point, material.id, F0);
-            }
-            
-            throughput *= BRDF * NoL / (0.5 + 0.5 * Xi.y); // Weight by BRDF and probability density function
-            rayDir = L;
-            rayOrigin = hit.point + N * 0.001;
-
         } else {
             radiance += throughput * BackgroundColor.xyz; break;
         }
-    }
-    
+    }   
     return radiance;
 }
 void main(){
 
     vec2 screenCoords = (gl_FragCoord.xy / vec2(VP_X, VP_Y)) * 2.0 - 1.0;
     vec3 finalColor = vec3(0.0);
-    int numSamples = 128;
+    int numSamples = 64;
     for (int i = 0; i < numSamples; ++i) {
         vec2 jitter = vec2(random(gl_FragCoord.xy + i * vec2(time, time)), random(gl_FragCoord.xy + i * vec2(time, time) + vec2(12.9898, 78.233))) * 2.0 - 1.0;
         jitter /= vec2(VP_X, VP_Y);
