@@ -341,7 +341,7 @@ void rayIntersect(vec3 rayOrigin, vec3 rayDir, out Hit hit) {
 }
 vec3 pathTrace(vec3 rayOrigin, vec3 rayDir) {
     vec3 throughput = vec3(1.0);
-    vec3 radiance = vec3(0.8);
+    vec3 radiance = vec3(0.2);
     Light light = lights[0];
     for (int depth = 0; depth < MAX_RAY_DEPTH; ++depth) {
         Hit hit;
